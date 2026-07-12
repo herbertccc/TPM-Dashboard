@@ -101,6 +101,24 @@ def _discover_projects():
                 print(f'   📄 发现项目: {name} (token={token})')
                 sheet_id = _feishu_get_first_sheet_id(token)
                 projects[name] = {'token': token, 'sheet_id': sheet_id}
+
+        # 后备方案：如果文件夹列表为空（可能缺少 drive 权限），从环境变量读取
+        if not projects:
+            config_str = os.environ.get('FEISHU_PROJECT_CONFIG', '')
+            if config_str:
+                print('   📋 从 FEISHU_PROJECT_CONFIG 环境变量读取项目配置')
+                try:
+                    config = json.loads(config_str)
+                    for name, token in config.items():
+                        print(f'   📄 发现项目: {name} (token={token})')
+                        sheet_id = _feishu_get_first_sheet_id(token)
+                        projects[name] = {'token': token, 'sheet_id': sheet_id}
+                except json.JSONDecodeError:
+                    print(f'   ❌ FEISHU_PROJECT_CONFIG 格式错误: {config_str}')
+            else:
+                print('   ⚠️ 文件夹列表为空且未配置 FEISHU_PROJECT_CONFIG，请检查:')
+                print('      1) 飞书应用是否有 drive:drive:readonly 权限并已发布')
+                print('      2) 或在 GitHub Secrets 中设置 FEISHU_PROJECT_CONFIG')
     else:
         # 本地模式：使用 lark-cli
         result = subprocess.run(
