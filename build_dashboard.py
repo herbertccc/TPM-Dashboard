@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""项目管理汇报看板生成脚本 - 飞书版 v2"""
+"""项目管理汇报看板生成脚本 - 飞书版 v2 (trigger build)"""
 import os, json, re, subprocess, urllib.request, urllib.error
 from datetime import datetime, timedelta
 from collections import defaultdict
