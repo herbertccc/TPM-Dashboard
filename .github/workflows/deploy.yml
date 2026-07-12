@@ -22,8 +22,24 @@ jobs:
       id-token: write
 
     steps:
+      - name: 禁用 Git CRLF 转换（必须在 checkout 之前）
+        run: git config --global core.autocrlf false
+
       - name: 检出代码
         uses: actions/checkout@v4
+
+      - name: 验证数据文件完整性
+        run: |
+          python3 -c "
+          import zipfile, glob
+          for f in glob.glob('data/*.xlsx'):
+              try:
+                  with zipfile.ZipFile(f) as z:
+                      print(f'{f}: OK ({len(z.namelist())} entries)')
+              except Exception as e:
+                  print(f'{f}: CORRUPT - {e}')
+                  exit(1)
+          "
 
       - name: 安装 Python
         uses: actions/setup-python@v5
