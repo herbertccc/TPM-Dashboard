@@ -295,6 +295,7 @@ def read_project_bugs(rows, person_mapping=None):
 
         # 解析时间
         created = record.get("创建时间")
+        bug["_raw_created"] = repr(created)
         if isinstance(created, datetime):
             bug["_created_dt"] = created
         elif isinstance(created, (int, float)) and created > 0:
@@ -304,9 +305,13 @@ def read_project_bugs(rows, person_mapping=None):
                 pass
         elif isinstance(created, str) and created:
             try:
-                bug["_created_dt"] = datetime.strptime(created[:10], "%Y-%m-%d")
-            except:
-                pass
+                # 先尝试作为数字解析（飞书可能返回字符串格式的Excel序列号）
+                bug["_created_dt"] = datetime(1899, 12, 30) + timedelta(days=int(float(created)))
+            except (ValueError, TypeError):
+                try:
+                    bug["_created_dt"] = datetime.strptime(created[:10], "%Y-%m-%d")
+                except:
+                    pass
 
         resolved = record.get("解决时间")
         if isinstance(resolved, datetime):
@@ -1574,7 +1579,7 @@ for _pn in PROJECT_NAMES:
     _non = [b for b in _bs if b["db_dept"] != "AIOT"]
     _dbg.append({"p": _pn, "total": len(_bs), "aiot": len(_aiot), "non": len(_non),
         "map_n": len(_pm), "map_keys": list(_pm.keys())[:5], "headers": _DEBUG_HEADERS.get(_pn, [])[:20],
-        "aiot_s": [{"a": b.get("assignee",""), "d": str(b["db_dept"])[:30], "r": str(b["db_role"])[:30], "w": b["rawWeight"], "cdt": str(b.get("_created_dt",""))[:10], "rdt": str(b.get("_resolved_dt",""))[:10]} for b in _aiot[:3]],
+        "aiot_s": [{"a": b.get("assignee",""), "d": str(b["db_dept"])[:30], "w": b["rawWeight"], "cdt": str(b.get("_created_dt",""))[:10], "raw_created": str(b.get("_raw_created",""))[:20]} for b in _aiot[:3]],
         "non_s": [{"a": b.get("assignee",""), "d": str(b["db_dept"])[:80], "r": str(b["db_role"])[:30], "w": b["rawWeight"]} for b in _non[:2]]})
 _debug_json = _json.dumps(_dbg, ensure_ascii=False)
 
