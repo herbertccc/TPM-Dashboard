@@ -80,6 +80,31 @@ def read_feishu_milestone():
         values = _lark_read_sheet(info['token'], info['sheet_id'])
     return values
 
+def _excel_serial_to_date_str(val):
+    """将飞书返回的 Excel 序列号日期转为 YYYY-MM-DD 字符串"""
+    if val is None:
+        return ""
+    if isinstance(val, str):
+        val = val.strip()
+        # 已经是日期格式 (含 '-')
+        if '-' in val:
+            return val
+        # 尝试解析为数字
+        try:
+            serial = int(float(val))
+        except (ValueError, TypeError):
+            return val
+    elif isinstance(val, (int, float)):
+        serial = int(val)
+    else:
+        return str(val)
+    # Excel 序列号转日期 (1899-12-30 为 day 0)
+    try:
+        dt = datetime(1899, 12, 30) + timedelta(days=serial)
+        return dt.strftime('%Y-%m-%d')
+    except Exception:
+        return str(serial)
+
 print(f"📁 项目列表: {PROJECT_NAMES}")
 
 
@@ -385,7 +410,7 @@ if len(ms_vals) > 1:
         if not project_name:
             continue
 
-        date_val = str(row[1]).strip() if len(row) > 1 and row[1] else ""
+        date_val = _excel_serial_to_date_str(row[1]) if len(row) > 1 and row[1] else ""
         ms_entry = {
             "date": date_val,
             "name": str(row[2]).strip() if len(row) > 2 and row[2] else "",
@@ -556,6 +581,20 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",san
 
 js = r"""
 console.log('[DEBUG] JS开始执行');
+
+// === 手机端检测：提示使用PC端打开 ===
+(function() {
+  var isMobile = /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+  if (isMobile) {
+    var overlay = document.createElement('div');
+    overlay.id = 'mobileBlockOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#fff;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;';
+    overlay.innerHTML = '<div style="font-size:48px;margin-bottom:24px">&#128187;</div>' +
+      '<div style="font-size:20px;font-weight:700;color:#1d2129;margin-bottom:12px">请使用PC端打开</div>' +
+      '<div style="font-size:14px;color:#86909c;line-height:1.8;max-width:280px">本看板包含复杂图表和时间线视图，手机端无法正常展示。<br>请在电脑浏览器中打开此链接。</div>';
+    document.addEventListener('DOMContentLoaded', function() { document.body.appendChild(overlay); });
+  }
+})();
 const PROJECTS_DATA = __PROJECTS_JSON__;
 const TREND_DATES = __TREND_DATES_JSON__;
 const CUMULATIVE_DI = __CUMULATIVE_DI_JSON__;
@@ -1079,11 +1118,23 @@ function renderTimeline() {
   var projects = Object.keys(MILESTONES);
   if (projects.length === 0) { viewport.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)">暂无里程碑数据</div>'; return; }
 
+  // 先显示加载状态，让浏览器有机会绘制
+  viewport.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text-secondary)"><div style="font-size:14px">正在加载时间线...</div></div>';
+
+  requestAnimationFrame(function() {
+  _renderTimelineInner(viewport, projects);
+  });
+}
+
+function _renderTimelineInner(viewport, projects) {
+
   var allDates = [];
   projects.forEach(function(pn) {
-    (MILESTONES[pn] || []).forEach(function(m) { if (m.date) allDates.push(new Date(m.date)); });
+    (MILESTONES[pn] || []).forEach(function(m) {
+      if (m.date) { var d = new Date(m.date); if (!isNaN(d.getTime())) allDates.push(d); }
+    });
   });
-  if (allDates.length === 0) { viewport.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)">暂无里程碑数据</div>'; return; }
+  if (allDates.length === 0) { viewport.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)">暂无有效日期的里程碑数据</div>'; return; }
 
   var today = new Date(); today.setHours(0,0,0,0);
 
@@ -1100,15 +1151,19 @@ function renderTimeline() {
   }
 
   var viewDays = 15;
-  var viewWidth = viewDays * tlDayWidth; // 15天像素宽度
+  var viewWidth = viewDays * tlDayWidth;
 
-  // 渲染范围 = 数据范围 + 前后各扩展5天(防卡片裁切)
+  // 渲染范围 = 数据范围 + 前后各扩展5天，最大180天
   var renderStart = new Date(tlDataStart); renderStart.setDate(renderStart.getDate() - 5);
   var renderEnd = new Date(tlDataEnd); renderEnd.setDate(renderEnd.getDate() + 5);
-  // 确保渲染范围至少覆盖默认15天视图
   var defaultViewEnd = new Date(today); defaultViewEnd.setDate(defaultViewEnd.getDate() + 12);
   if (renderStart > tlViewStart) renderStart = new Date(tlViewStart);
   if (renderEnd < defaultViewEnd) renderEnd = new Date(defaultViewEnd);
+  // 限制最大渲染范围180天，防止DOM节点过多导致卡顿
+  var maxDays = 180;
+  if (Math.ceil((renderEnd - renderStart) / 86400000) > maxDays) {
+    renderEnd = new Date(renderStart); renderEnd.setDate(renderEnd.getDate() + maxDays);
+  }
 
   var totalDays = Math.ceil((renderEnd - renderStart) / 86400000);
   var innerWidth = totalDays * tlDayWidth;
