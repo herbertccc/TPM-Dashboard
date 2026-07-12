@@ -115,10 +115,10 @@ def _write_xlsx(filepath, headers, rows):
 
 # ===== 执行同步 =====
 # 将本地旧数据移入废纸篓，仅保留钉钉在线同步的数据
-if DINGTALK_FOLDER and os.path.exists(DATA_DIR):
+if DINGTALK_FOLDER and os.path.exists(DATA_DIR) and os.path.exists(DWS_BIN):
     for f in glob.glob(os.path.join(DATA_DIR, '*.xlsx')):
         trash_path = os.path.expanduser(f'~/.Trash/{os.path.basename(f)}')
-        # 废纸篓中已有同名文件则先移除
+        os.makedirs(os.path.dirname(trash_path), exist_ok=True)
         if os.path.exists(trash_path):
             os.remove(trash_path)
         os.rename(f, trash_path)
