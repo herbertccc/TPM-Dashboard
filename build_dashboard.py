@@ -380,6 +380,22 @@ for pn in PROJECT_NAMES:
     else:
         all_projects_bugs[pn] = read_project_bugs(rows, PERSON_MAPPINGS.get(pn, {}))
     print(f"   {pn}: {len(all_projects_bugs[pn])} 条任务")
+    # DEBUG: 输出样本数据
+    pm = PERSON_MAPPINGS.get(pn, {})
+    print(f"   [DEBUG] 人员映射表: {len(pm)}人")
+    aiot_bugs = [b for b in all_projects_bugs[pn] if b["db_dept"] == "AIOT"]
+    print(f"   [DEBUG] AIOT任务数: {len(aiot_bugs)}")
+    non_aiot = [b for b in all_projects_bugs[pn] if b["db_dept"] != "AIOT"]
+    if non_aiot:
+        sample = non_aiot[0]
+        print(f"   [DEBUG] 非AIOT样本: db_dept={repr(sample['db_dept'])}, db_role={repr(sample['db_role'])}, rawWeight={sample['rawWeight']}")
+    if aiot_bugs:
+        sample = aiot_bugs[0]
+        print(f"   [DEBUG] AIOT样本: db_dept={repr(sample['db_dept'])}, db_role={repr(sample['db_role'])}, rawWeight={sample['rawWeight']}")
+    # 检查DB-DI值原始值
+    if all_projects_bugs[pn]:
+        raw = all_projects_bugs[pn][0]
+        print(f"   [DEBUG] 首条记录: assignee={repr(raw.get('assignee',''))}, db_dept={repr(raw['db_dept'])}, rawWeight={raw['rawWeight']}")
 
 
 # ===== 统计计算 =====
