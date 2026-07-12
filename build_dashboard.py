@@ -308,9 +308,9 @@ def read_project_bugs(rows, person_mapping=None):
                 bug["_created_dt"] = datetime(1899, 12, 30) + timedelta(days=int(float(created)))
             except (ValueError, TypeError):
                 try:
-                    # 统一替换斜杠为横杠
                     normalized = created.replace('/', '-')
-                    bug["_created_dt"] = datetime.strptime(normalized[:10], "%Y-%m-%d")
+                    date_part = normalized.split(' ')[0]  # 取日期部分
+                    bug["_created_dt"] = datetime.strptime(date_part, "%Y-%m-%d")
                 except:
                     pass
 
@@ -328,7 +328,8 @@ def read_project_bugs(rows, person_mapping=None):
             except (ValueError, TypeError):
                 try:
                     normalized = resolved.replace('/', '-')
-                    bug["_resolved_dt"] = datetime.strptime(normalized[:10], "%Y-%m-%d")
+                    date_part = normalized.split(' ')[0]
+                    bug["_resolved_dt"] = datetime.strptime(date_part, "%Y-%m-%d")
                 except:
                     pass
 
