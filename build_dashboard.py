@@ -333,9 +333,9 @@ def read_project_bugs(rows, person_mapping=None):
             if assignee in person_mapping:
                 m = person_mapping[assignee]
                 if "VLOOKUP" in str(bug["db_dept"]):
-                    bug["db_dept"] = m["dept"]
+                    bug["db_dept"] = m["dept"].upper()
                 if "VLOOKUP" in str(bug["db_role"]):
-                    bug["db_role"] = m["role"]
+                    bug["db_role"] = m["role"].upper()
         is_aiot = bug["db_dept"] == "AIOT"
         if is_aiot:
             status = bug["status"]
