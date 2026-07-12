@@ -21,6 +21,9 @@ FEISHU_MILESTONE_SHEET = {
 PROJECT_NAMES = list(FEISHU_DATA_SHEETS.keys())
 
 # ===== 飞书数据读取 =====
+# 调试：输出当前模式
+print(f"🔧 FEISHU_APP_ID={'已设置' if FEISHU_APP_ID else '未设置（使用 lark-cli 模式）'}")
+
 def _feishu_get_token():
     """获取飞书 tenant_access_token（GitHub Actions 云端模式）"""
     url = 'https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal'
