@@ -277,8 +277,8 @@ def read_project_bugs(rows, person_mapping=None):
             "level": str(record.get("BUG等级", "")),
             "creator": str(record.get("创建者", "")),
             "reopen_count": int(record.get("重开次数", 0) or 0),
-            "db_role": str(record.get("DB-角色", "")) if record.get("DB-角色") else "",
-            "db_dept": str(record.get("DB-部门", "")) if record.get("DB-部门") else "",
+            "db_role": str(record.get("DB-角色", "")).upper() if record.get("DB-角色") else "",
+            "db_dept": str(record.get("DB-部门", "")).upper() if record.get("DB-部门") else "",
             "sla_timeout": 1 if record.get("DB-SLA超时") is not None and str(record.get("DB-SLA超时", "")).strip() not in ("", "None") else 0,
             "sla_days": 0,  # DB-SLA超时的实际数值，用于计算平均超时天数
             "_created_dt": None,
