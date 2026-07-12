@@ -9,16 +9,12 @@ import openpyxl
 FEISHU_APP_ID = os.environ.get('FEISHU_APP_ID', '')
 FEISHU_APP_SECRET = os.environ.get('FEISHU_APP_SECRET', '')
 
-FEISHU_DATA_SHEETS = {
-    'E1W': {'token': 'DyyRsEM82hDniLtmI2acZd9rnDf', 'sheet_id': '5fb42d'},
-    'E2W': {'token': 'XUdusKsAPhQPOCtwUOWc6S6QnOb', 'sheet_id': '5fb42d'},
-}
+FEISHU_DATA_FOLDER = 'TzdbfQ6exlY5C1dVRyucGp9nnee'
+FEISHU_DEFAULT_SHEET_ID = '5fb42d'
 
 FEISHU_MILESTONE_SHEET = {
     'token': 'YyjLsmNSWhH2wdtT4fac41O0n8d', 'sheet_id': '6fb317',
 }
-
-PROJECT_NAMES = list(FEISHU_DATA_SHEETS.keys())
 
 # ===== 飞书数据读取 =====
 # 调试：输出当前模式
@@ -34,20 +30,49 @@ def _feishu_get_token():
         return json.loads(resp.read())['tenant_access_token']
 
 
-def _feishu_read_sheet(spreadsheet_token, sheet_id):
-    """通过飞书 Open API 读取表格数据（GitHub Actions 云端模式）"""
+def _feishu_api_get(url_path):
+    """通用飞书 API GET 请求（云端模式）"""
     token = _feishu_get_token()
-    range_str = f'{sheet_id}!A1:T200'
-    url = f'https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/values/{range_str}'
+    url = f'https://open.feishu.cn/open-apis{url_path}'
     req = urllib.request.Request(url, headers={'Authorization': f'Bearer {token}'})
     try:
         with urllib.request.urlopen(req) as resp:
             result = json.loads(resp.read())
-        return result['data']['valueRange']['values']
+        if result.get('code', 0) != 0:
+            print(f'   ❌ 飞书 API 错误: {result}')
+            return None
+        return result.get('data')
     except urllib.error.HTTPError as e:
         body = e.read().decode('utf-8')
         print(f'   ❌ 飞书 API 错误 ({e.code}): {body}')
-        raise
+        return None
+
+
+def _feishu_list_folder_files(folder_token):
+    """列出飞书文件夹中的文件（云端模式），返回 [{name, token, type}, ...]"""
+    data = _feishu_api_get(f'/drive/v1/files?folder_token={folder_token}&page_size=50')
+    if not data or 'files' not in data:
+        return []
+    return data['files']
+
+
+def _feishu_get_first_sheet_id(spreadsheet_token):
+    """获取电子表格第一个工作表的 sheet_id（云端模式）"""
+    data = _feishu_api_get(f'/sheets/v2/spreadsheets/{spreadsheet_token}/metainfo')
+    if data and 'sheets' in data and len(data['sheets']) > 0:
+        return data['sheets'][0]['sheetId']
+    return FEISHU_DEFAULT_SHEET_ID
+
+
+def _feishu_read_sheet(spreadsheet_token, sheet_id):
+    """通过飞书 Open API 读取表格数据（GitHub Actions 云端模式）"""
+    data = _feishu_api_get(f'/sheets/v2/spreadsheets/{spreadsheet_token}/values/{sheet_id}%21A1:T200')
+    if data and 'valueRange' in data:
+        values = data['valueRange'].get('values')
+        if values:
+            return values
+    print(f'   ⚠️ 表格 {spreadsheet_token} 无有效数据或已被删除，跳过')
+    return None
 
 
 def _lark_read_sheet(spreadsheet_token, sheet_id):
@@ -58,7 +83,55 @@ def _lark_read_sheet(spreadsheet_token, sheet_id):
         capture_output=True, text=True, timeout=30
     )
     data = json.loads(result.stdout)
-    return data['data']['valueRange']['values']
+    if data.get('data', {}).get('valueRange', {}).get('values'):
+        return data['data']['valueRange']['values']
+    print(f'   ⚠️ 表格 {spreadsheet_token} 无有效数据，跳过')
+    return None
+
+
+def _discover_projects():
+    """从飞书文件夹动态发现项目列表，返回 {项目名: {token, sheet_id}}"""
+    projects = {}
+    if FEISHU_APP_ID:
+        files = _feishu_list_folder_files(FEISHU_DATA_FOLDER)
+        for f in files:
+            if f.get('type') == 'sheet':
+                name = f['name']
+                token = f['token']
+                print(f'   📄 发现项目: {name} (token={token})')
+                sheet_id = _feishu_get_first_sheet_id(token)
+                projects[name] = {'token': token, 'sheet_id': sheet_id}
+    else:
+        # 本地模式：使用 lark-cli
+        result = subprocess.run(
+            ['lark-cli', 'drive', 'files', 'list',
+             '--params', json.dumps({'folder_token': FEISHU_DATA_FOLDER}, separators=(',', ':')),
+             '--page-all', '--as', 'user', '--format', 'json'],
+            capture_output=True, text=True, timeout=30
+        )
+        try:
+            # lark-cli 可能输出进度行（如 "[page 1] fetching..."），提取 JSON 部分
+            stdout = result.stdout.strip()
+            json_start = stdout.find('{')
+            if json_start >= 0:
+                stdout = stdout[json_start:]
+            resp = json.loads(stdout)
+            for f in resp.get('data', {}).get('files', []):
+                if f.get('type') == 'sheet':
+                    name = f['name']
+                    token = f['token']
+                    print(f'   📄 发现项目: {name} (token={token})')
+                    # 本地模式使用默认 sheet_id
+                    projects[name] = {'token': token, 'sheet_id': FEISHU_DEFAULT_SHEET_ID}
+        except (json.JSONDecodeError, KeyError):
+            print('   ⚠️ 无法解析文件夹列表，使用空项目列表')
+    return projects
+
+
+print('📁 正在从飞书文件夹发现项目...')
+FEISHU_DATA_SHEETS = _discover_projects()
+PROJECT_NAMES = list(FEISHU_DATA_SHEETS.keys())
+print(f'📁 项目列表: {PROJECT_NAMES}')
 
 
 def read_feishu_data(project_name):
@@ -219,7 +292,11 @@ def read_project_bugs(rows):
 all_projects_bugs = {}
 for pn in PROJECT_NAMES:
     rows = read_feishu_data(pn)
-    all_projects_bugs[pn] = read_project_bugs(rows)
+    if rows is None:
+        print(f"   ⚠️ {pn}: 无法读取数据，跳过")
+        all_projects_bugs[pn] = []
+    else:
+        all_projects_bugs[pn] = read_project_bugs(rows)
     print(f"   {pn}: {len(all_projects_bugs[pn])} 条任务")
 
 
@@ -395,7 +472,7 @@ person_project_stats = calc_person_stats(PROJECT_NAMES, all_projects_bugs)
 # 读取里程碑数据（从飞书在线表格，项目列有合并单元格）
 milestones = {}
 ms_vals = read_feishu_milestone()
-if len(ms_vals) > 1:
+if ms_vals and len(ms_vals) > 1:
     headers = [str(h).strip() if h else '' for h in ms_vals[0]]
     # 处理合并单元格：项目列空值时沿用上一行的值
     last_project = ""
