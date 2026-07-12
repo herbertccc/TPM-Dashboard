@@ -5,10 +5,9 @@ on:
     branches:
       - main
     paths:
-      - 'data/**'
-      - 'milestone/**'
-      - 'Version_Plan/**'
+      - '**.b64'
       - 'build_dashboard.py'
+      - 'decode_data.py'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
@@ -22,30 +21,18 @@ jobs:
 
     steps:
       - name: 克隆仓库
-        run: |
-          git clone --config core.autocrlf=false --depth 1 https://github.com/herbertccc/TPM-Dashboard.git .
+        run: git clone --depth 1 https://github.com/herbertccc/TPM-Dashboard.git .
 
       - name: 安装 Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
+      - name: 解码数据文件 (base64 -> xlsx)
+        run: python3 decode_data.py
+
       - name: 安装依赖
         run: pip install -r requirements.txt
-
-      - name: 验证数据文件完整性
-        run: |
-          python3 -c "
-          import zipfile, glob
-          for f in glob.glob('data/*.xlsx'):
-              try:
-                  with zipfile.ZipFile(f) as z:
-                      print(f'{f}: OK ({len(z.namelist())} entries)')
-              except Exception as e:
-                  print(f'{f}: CORRUPT - {e}')
-                  exit(1)
-          print('All files OK')
-          "
 
       - name: 构建看板
         run: |

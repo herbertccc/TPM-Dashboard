@@ -6,3 +6,7 @@ __pycache__/
 ~$*
 tmp/
 *.pyo
+
+# 原始 xlsx 文件被企业加密工具保护，Git 只追踪 base64 文本版
+*.xlsx
+!*.xlsx.b64
