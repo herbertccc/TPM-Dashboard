@@ -40,9 +40,14 @@ def _feishu_read_sheet(spreadsheet_token, sheet_id):
     range_str = f'{sheet_id}!A1:T200'
     url = f'https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{spreadsheet_token}/values/{range_str}'
     req = urllib.request.Request(url, headers={'Authorization': f'Bearer {token}'})
-    with urllib.request.urlopen(req) as resp:
-        result = json.loads(resp.read())
-    return result['data']['valueRange']['values']
+    try:
+        with urllib.request.urlopen(req) as resp:
+            result = json.loads(resp.read())
+        return result['data']['valueRange']['values']
+    except urllib.error.HTTPError as e:
+        body = e.read().decode('utf-8')
+        print(f'   ❌ 飞书 API 错误 ({e.code}): {body}')
+        raise
 
 
 def _lark_read_sheet(spreadsheet_token, sheet_id):
