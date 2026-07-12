@@ -7,6 +7,9 @@ __pycache__/
 tmp/
 *.pyo
 
-# 原始 xlsx 文件被企业加密工具保护，Git 只追踪 base64 文本版
+# 数据现在从飞书 API 读取，本地 data/ milestone/ 仅用于开发调试
+data/
+milestone/
+
+# 本地 xlsx 文件（企业加密，不上传）
 *.xlsx
-!*.xlsx.b64

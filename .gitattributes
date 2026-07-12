@@ -1,6 +1,3 @@
 # 二进制文件，禁止 Git 做任何转换
-*.xlsx binary
-*.xls binary
-*.xlsm binary
 *.png binary
 *.jpg binary

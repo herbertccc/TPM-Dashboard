@@ -5,11 +5,12 @@ on:
     branches:
       - main
     paths:
-      - '**.b64'
       - 'build_dashboard.py'
-      - 'decode_data.py'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
+  schedule:
+    # 每天北京时间 9:30 (UTC 1:30)
+    - cron: '30 1 * * *'
 
 jobs:
   build-and-deploy:
@@ -20,21 +21,21 @@ jobs:
       id-token: write
 
     steps:
-      - name: 克隆仓库
-        run: git clone --depth 1 https://github.com/herbertccc/TPM-Dashboard.git .
+      - name: 检出代码
+        uses: actions/checkout@v4
 
       - name: 安装 Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: 解码数据文件 (base64 -> xlsx)
-        run: python3 decode_data.py
-
       - name: 安装依赖
         run: pip install -r requirements.txt
 
       - name: 构建看板
+        env:
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
         run: |
           python build_dashboard.py
           head -5 index.html
