@@ -295,7 +295,6 @@ def read_project_bugs(rows, person_mapping=None):
 
         # 解析时间
         created = record.get("创建时间")
-        bug["_raw_created"] = repr(created)
         if isinstance(created, datetime):
             bug["_created_dt"] = created
         elif isinstance(created, (int, float)) and created > 0:
@@ -389,7 +388,6 @@ def read_project_bugs(rows, person_mapping=None):
 
 
 # 读取所有项目数据
-_DEBUG_HEADERS = {}
 all_projects_bugs = {}
 PERSON_MAPPINGS = {}  # {项目名: {姓名: {role, dept}}}
 for pn in PROJECT_NAMES:
@@ -402,25 +400,8 @@ for pn in PROJECT_NAMES:
     else:
         all_projects_bugs[pn] = read_project_bugs(rows, PERSON_MAPPINGS.get(pn, {}))
     print(f"   {pn}: {len(all_projects_bugs[pn])} 条任务")
-    # 保存表头用于调试
-    if pn not in _DEBUG_HEADERS:
-        _DEBUG_HEADERS[pn] = [str(h).strip() if h else '' for h in rows[0]] if rows else []
     # DEBUG: 输出样本数据
-    pm = PERSON_MAPPINGS.get(pn, {})
-    print(f"   [DEBUG] 人员映射表: {len(pm)}人")
-    aiot_bugs = [b for b in all_projects_bugs[pn] if b["db_dept"] == "AIOT"]
-    print(f"   [DEBUG] AIOT任务数: {len(aiot_bugs)}")
-    non_aiot = [b for b in all_projects_bugs[pn] if b["db_dept"] != "AIOT"]
-    if non_aiot:
-        sample = non_aiot[0]
-        print(f"   [DEBUG] 非AIOT样本: db_dept={repr(sample['db_dept'])}, db_role={repr(sample['db_role'])}, rawWeight={sample['rawWeight']}")
-    if aiot_bugs:
-        sample = aiot_bugs[0]
-        print(f"   [DEBUG] AIOT样本: db_dept={repr(sample['db_dept'])}, db_role={repr(sample['db_role'])}, rawWeight={sample['rawWeight']}")
-    # 检查DB-DI值原始值
-    if all_projects_bugs[pn]:
-        raw = all_projects_bugs[pn][0]
-        print(f"   [DEBUG] 首条记录: assignee={repr(raw.get('assignee',''))}, db_dept={repr(raw['db_dept'])}, rawWeight={raw['rawWeight']}")
+
 
 
 # ===== 统计计算 =====
@@ -1575,30 +1556,13 @@ js_injected = js.replace('__PROJECTS_JSON__', json.dumps(projects_data_for_js, e
 js_safe = js_injected.replace('</script>', '<\\/script>')
 
 
-# 调试信息
-import json as _json
-_dbg = []
-for _pn in PROJECT_NAMES:
-    _bs = all_projects_bugs.get(_pn, [])
-    _pm = PERSON_MAPPINGS.get(_pn, {})
-    _aiot = [b for b in _bs if b["db_dept"] == "AIOT"]
-    _non = [b for b in _bs if b["db_dept"] != "AIOT"]
-    _dbg.append({"p": _pn, "total": len(_bs), "aiot": len(_aiot), "non": len(_non),
-        "map_n": len(_pm), "map_keys": list(_pm.keys())[:5], "headers": _DEBUG_HEADERS.get(_pn, [])[:20],
-        "aiot_s": [{"a": b.get("assignee",""), "d": str(b["db_dept"])[:30], "w": b["rawWeight"], "cdt": str(b.get("_created_dt",""))[:10], "raw_created": str(b.get("_raw_created",""))[:20]} for b in _aiot[:3]],
-        "non_s": [{"a": b.get("assignee",""), "d": str(b["db_dept"])[:80], "r": str(b["db_role"])[:30], "w": b["rawWeight"]} for b in _non[:2]]})
-_debug_json = _json.dumps(_dbg, ensure_ascii=False)
 
 html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>项目管理汇报看板</title>\n<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>\n<style>' + css + '</style>\n</head>\n<body>\n<div class="sidebar">\n  <div class="sidebar-header"><div class="sidebar-logo">AI</div><div class="sidebar-title">项目管理看板</div></div>\n  <ul class="nav-menu" id="navMenu"></ul>\n</div>\n<div class="main" id="mainContent"></div>\n<script>' + js_safe + '</script>\n</body>\n</html>'
 
 with open('index.html', 'w', encoding='utf-8') as f:
     f.write(html)
 
-# 写入调试数据
-with open('debug.json', 'w', encoding='utf-8') as f:
-    f.write(_debug_json)
-
-print("✅ index.html + debug.json 生成成功！")
+print("✅ index.html 生成成功！")
 print(f"   - 项目数: {len(PROJECT_NAMES)}")
 for pn in PROJECT_NAMES:
     s = projects_stats[pn]
