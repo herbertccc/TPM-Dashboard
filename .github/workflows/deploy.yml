@@ -10,7 +10,6 @@ on:
       - 'Version_Plan/**'
       - 'build_dashboard.py'
       - '.github/workflows/deploy.yml'
-  # 也支持手动触发（在 GitHub 网页上点按钮）
   workflow_dispatch:
 
 jobs:
@@ -22,11 +21,17 @@ jobs:
       id-token: write
 
     steps:
-      - name: 禁用 Git CRLF 转换（必须在 checkout 之前）
-        run: git config --global core.autocrlf false
+      - name: 克隆仓库
+        run: |
+          git clone --config core.autocrlf=false --depth 1 https://github.com/herbertccc/TPM-Dashboard.git .
 
-      - name: 检出代码
-        uses: actions/checkout@v4
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
 
       - name: 验证数据文件完整性
         run: |
@@ -39,21 +44,13 @@ jobs:
               except Exception as e:
                   print(f'{f}: CORRUPT - {e}')
                   exit(1)
+          print('All files OK')
           "
-
-      - name: 安装 Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: 安装依赖
-        run: pip install -r requirements.txt
 
       - name: 构建看板
         run: |
           python build_dashboard.py
-          echo "构建输出："
-          cat index.html | head -5
+          head -5 index.html
 
       - name: 准备 Pages 产物
         run: mkdir -p _site && cp index.html _site/
