@@ -39,7 +39,7 @@ jobs:
           head -5 index.html
 
       - name: 准备 Pages 产物
-        run: mkdir -p _site && cp index.html _site/
+        run: mkdir -p _site && cp index.html _site/ && cp debug.json _site/ 2>/dev/null || true
 
       - name: 配置 Pages
         uses: actions/configure-pages@v4
