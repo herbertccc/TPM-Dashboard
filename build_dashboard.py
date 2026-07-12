@@ -66,7 +66,7 @@ def _feishu_get_first_sheet_id(spreadsheet_token):
 
 def _feishu_read_sheet(spreadsheet_token, sheet_id):
     """通过飞书 Open API 读取表格数据（GitHub Actions 云端模式）"""
-    data = _feishu_api_get(f'/sheets/v2/spreadsheets/{spreadsheet_token}/values/{sheet_id}%21A1:T200')
+    data = _feishu_api_get(f'/sheets/v2/spreadsheets/{spreadsheet_token}/values/{sheet_id}%21A1:T200?valueRenderOption=FormattedValue')
     if data and 'valueRange' in data:
         values = data['valueRange'].get('values')
         if values:
@@ -79,7 +79,8 @@ def _lark_read_sheet(spreadsheet_token, sheet_id):
     """通过 lark-cli 读取表格数据（本地开发模式）"""
     result = subprocess.run(
         ['lark-cli', 'sheets', '+read', '--spreadsheet-token', spreadsheet_token,
-         '--sheet-id', sheet_id, '--range', 'A1:T200'],
+         '--sheet-id', sheet_id, '--range', 'A1:T200',
+         '--params', json.dumps({'valueRenderOption': 'FormattedValue'}, separators=(',', ':'))],
         capture_output=True, text=True, timeout=30
     )
     data = json.loads(result.stdout)
