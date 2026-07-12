@@ -297,6 +297,11 @@ def read_project_bugs(rows, person_mapping=None):
         created = record.get("创建时间")
         if isinstance(created, datetime):
             bug["_created_dt"] = created
+        elif isinstance(created, (int, float)) and created > 0:
+            try:
+                bug["_created_dt"] = datetime(1899, 12, 30) + timedelta(days=int(created))
+            except:
+                pass
         elif isinstance(created, str) and created:
             try:
                 bug["_created_dt"] = datetime.strptime(created[:10], "%Y-%m-%d")
@@ -306,6 +311,11 @@ def read_project_bugs(rows, person_mapping=None):
         resolved = record.get("解决时间")
         if isinstance(resolved, datetime):
             bug["_resolved_dt"] = resolved
+        elif isinstance(resolved, (int, float)) and resolved > 0:
+            try:
+                bug["_resolved_dt"] = datetime(1899, 12, 30) + timedelta(days=int(resolved))
+            except:
+                pass
         elif isinstance(resolved, str) and resolved:
             try:
                 bug["_resolved_dt"] = datetime.strptime(resolved[:10], "%Y-%m-%d")
