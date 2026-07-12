@@ -305,11 +305,12 @@ def read_project_bugs(rows, person_mapping=None):
                 pass
         elif isinstance(created, str) and created:
             try:
-                # 先尝试作为数字解析（飞书可能返回字符串格式的Excel序列号）
                 bug["_created_dt"] = datetime(1899, 12, 30) + timedelta(days=int(float(created)))
             except (ValueError, TypeError):
                 try:
-                    bug["_created_dt"] = datetime.strptime(created[:10], "%Y-%m-%d")
+                    # 统一替换斜杠为横杠
+                    normalized = created.replace('/', '-')
+                    bug["_created_dt"] = datetime.strptime(normalized[:10], "%Y-%m-%d")
                 except:
                     pass
 
@@ -323,9 +324,13 @@ def read_project_bugs(rows, person_mapping=None):
                 pass
         elif isinstance(resolved, str) and resolved:
             try:
-                bug["_resolved_dt"] = datetime.strptime(resolved[:10], "%Y-%m-%d")
-            except:
-                pass
+                bug["_resolved_dt"] = datetime(1899, 12, 30) + timedelta(days=int(float(resolved)))
+            except (ValueError, TypeError):
+                try:
+                    normalized = resolved.replace('/', '-')
+                    bug["_resolved_dt"] = datetime.strptime(normalized[:10], "%Y-%m-%d")
+                except:
+                    pass
 
         # DI权重 - 从DB-DI值列直接读取
         db_di_val = record.get("DB-DI值")
