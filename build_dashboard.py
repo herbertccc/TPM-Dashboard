@@ -1560,7 +1560,7 @@ for _pn in PROJECT_NAMES:
     _non = [b for b in _bs if b["db_dept"] != "AIOT"]
     _dbg.append({"p": _pn, "total": len(_bs), "aiot": len(_aiot), "non": len(_non),
         "map_n": len(_pm), "map_keys": list(_pm.keys())[:5],
-        "aiot_s": [{"a": b.get("assignee",""), "d": str(b["db_dept"])[:30], "r": str(b["db_role"])[:30], "w": b["rawWeight"]} for b in _aiot[:3]],
+        "aiot_s": [{"a": b.get("assignee",""), "d": str(b["db_dept"])[:30], "r": str(b["db_role"])[:30], "w": b["rawWeight"], "cdt": str(b.get("_created_dt",""))[:10], "rdt": str(b.get("_resolved_dt",""))[:10]} for b in _aiot[:3]],
         "non_s": [{"a": b.get("assignee",""), "d": str(b["db_dept"])[:80], "r": str(b["db_role"])[:30], "w": b["rawWeight"]} for b in _non[:2]]})
 _debug_json = _json.dumps(_dbg, ensure_ascii=False)
 
