@@ -23,6 +23,9 @@ FALLBACK_PROJECT_CONFIG = {
     'E1W': {'token': 'DyyRsEM82hDniLtmI2acZd9rnDf'},
 }
 
+# 排除的项目名（旧文件/重复项目）
+EXCLUDED_PROJECTS = {'WR'}
+
 # ===== 飞书数据读取 =====
 # 调试：输出当前模式
 print(f"🔧 FEISHU_APP_ID={'已设置' if FEISHU_APP_ID else '未设置（使用 lark-cli 模式）'}")
@@ -268,6 +271,12 @@ def _discover_projects():
             print(f'   📄 补充关键项目: {name} (token={token})')
             sheet_id = _get_first_sheet_id(token)
             projects[name] = {'token': token, 'sheet_id': sheet_id}
+
+    # 排除旧文件/重复项目
+    for name in list(projects.keys()):
+        if name in EXCLUDED_PROJECTS:
+            print(f'   ⏭️ 排除项目: {name}')
+            del projects[name]
 
     return projects
 
