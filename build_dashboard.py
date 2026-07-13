@@ -227,26 +227,39 @@ def _excel_serial_to_date_str(val):
     """将飞书返回的 Excel 序列号日期转为 YYYY-MM-DD 字符串"""
     if val is None:
         return ""
+    
+    # 处理字符串类型
     if isinstance(val, str):
         val = val.strip()
-        # 已经是日期格式 (含 '-')
-        if '-' in val:
-            return val
+        if not val:
+            return ""
+        # 已经是标准日期格式 (含 '-')
+        if '-' in val and len(val) >= 10:
+            # 提取日期部分（去掉时间）
+            date_part = val.split(' ')[0]
+            # 验证格式 YYYY-MM-DD
+            try:
+                datetime.strptime(date_part, '%Y-%m-%d')
+                return date_part
+            except ValueError:
+                pass
         # 尝试解析为数字
         try:
             serial = int(float(val))
         except (ValueError, TypeError):
-            return val
+            # 如果是中文格式如 "7月14日"，无法转换，返回空
+            return ""
     elif isinstance(val, (int, float)):
         serial = int(val)
     else:
         return str(val)
+    
     # Excel 序列号转日期 (1899-12-30 为 day 0)
     try:
         dt = datetime(1899, 12, 30) + timedelta(days=serial)
         return dt.strftime('%Y-%m-%d')
     except Exception:
-        return str(serial)
+        return ""
 
 print(f"📁 项目列表: {PROJECT_NAMES}")
 
@@ -605,29 +618,88 @@ if ms_vals and len(ms_vals) > 1:
     print(f"📅 里程碑数据: {len(milestones)} 个项目")
 
 
-# 读取版本计划数据
-version_plan = {}
-vp_file = os.path.join(os.path.dirname(__file__), "version_plan", "Version_Plan.xlsx")
-if os.path.exists(vp_file):
-    vp_wb = openpyxl.load_workbook(vp_file, data_only=True)
-    for sn in vp_wb.sheetnames:
-        ws = vp_wb[sn]
-        headers = [ws.cell(1, c).value for c in range(1, ws.max_column + 1)]
+# 读取版本计划数据 - 从飞书表格读取
+version_plan = []
+VP_SPREADSHEET_TOKEN = 'ApFaswCTXhnKbitbTnrcL0tinCe'
+VP_SHEET_ID = 'default'  # 使用默认工作表
+
+try:
+    if FEISHU_APP_ID:
+        vp_values = _feishu_read_sheet(VP_SPREADSHEET_TOKEN, VP_SHEET_ID)
+    else:
+        vp_values = _lark_read_sheet(VP_SPREADSHEET_TOKEN, VP_SHEET_ID)
+    
+    if vp_values and len(vp_values) > 1:
+        headers = [str(h).strip() if h else '' for h in vp_values[0]]
+        print(f'📋 版本计划表头: {headers}')
+        
+        # 找到各列的索引
+        date_idx = None
+        version_idx = None
+        content_idx = None
+        link_idx = None
+        
+        for i, h in enumerate(headers):
+            h_lower = h.lower()
+            if '日期' in h or 'date' in h_lower:
+                date_idx = i
+            elif '版本' in h or 'version' in h_lower:
+                version_idx = i
+            elif '内容' in h or '概述' in h or 'overview' in h_lower or '说明' in h:
+                content_idx = i
+            elif '链接' in h or 'link' in h_lower or '文档' in h:
+                link_idx = i
+        
+        print(f'   列索引: 日期={date_idx}, 版本={version_idx}, 内容={content_idx}, 链接={link_idx}')
+        
         plans = []
-        for r in range(2, ws.max_row + 1):
-            plan_name = ws.cell(r, 1).value
-            overview = ws.cell(r, 2).value
-            doc_link = ws.cell(r, 3).value
-            if not plan_name:
+        for row in vp_values[1:]:
+            if not row or not any(row):
                 continue
-            plans.append({
-                "name": str(plan_name),
-                "overview": str(overview or ""),
-                "link": str(doc_link or ""),
-            })
-        if plans:
-            version_plan[sn] = plans
-    vp_wb.close()
+            
+            # 解析日期
+            date_val = ""
+            if date_idx is not None and len(row) > date_idx and row[date_idx]:
+                date_val = _excel_serial_to_date_str(row[date_idx])
+            
+            # 解析版本号
+            version_name = ""
+            if version_idx is not None and len(row) > version_idx and row[version_idx]:
+                version_name = str(row[version_idx]).strip()
+            
+            # 解析内容
+            overview = ""
+            if content_idx is not None and len(row) > content_idx and row[content_idx]:
+                overview = str(row[content_idx]).strip()
+            
+            # 解析链接
+            doc_link = ""
+            if link_idx is not None and len(row) > link_idx and row[link_idx]:
+                doc_link = str(row[link_idx]).strip()
+            
+            if version_name:
+                plans.append({
+                    "date": date_val,
+                    "name": version_name,
+                    "overview": overview,
+                    "link": doc_link,
+                })
+        
+        # 按日期倒序排列（有日期的排在前面，日期大的在前）
+        def parse_date_for_sort(p):
+            if p["date"]:
+                try:
+                    return datetime.strptime(p["date"], "%Y-%m-%d")
+                except:
+                    pass
+            return datetime.min  # 无日期的排最后
+        
+        plans.sort(key=parse_date_for_sort, reverse=True)
+        version_plan = plans
+        print(f'📋 版本计划: {len(version_plan)} 条')
+except Exception as e:
+    print(f'⚠️ 读取版本计划失败: {e}')
+    version_plan = []
 
 css = """
 :root { --bg:#f5f7fa; --sidebar-bg:#fff; --card-bg:#fff; --text:#1d2129; --text-secondary:#86909c; --border:#e5e6eb; --blue:#165dff; --red:#f53f3f; --green:#00b42a; --orange:#ff7d00; --yellow:#ffb400; --gray:#c9cdd4; --shadow:0 2px 8px rgba(0,0,0,0.06); --radius:10px; }
@@ -1102,7 +1174,7 @@ function renderHR() {
     if (!deptGroups[dept]) deptGroups[dept] = [];
     deptGroups[dept].push(p);
   });
-  var sections = '';
+  var sections = '<div class="chart-title" style="margin-bottom:20px">人力资源</div>';
   var deptOrder = ['AIOT','整机','其他','未知'];
   var allPersons = [];
   deptOrder.forEach(function(dept) {
@@ -1202,7 +1274,7 @@ function renderHR() {
       var solvedDi = pData.solved[pn] || 0;
       if (solvedDi > 0) {
         var width = (solvedDi / maxDi * 100).toFixed(1);
-        var showVal = parseFloat(width) > 5;
+        var showVal = parseFloat(width) > 3;  // 降低阈值到3%
         segments += '<div class="pp-bar-segment" style="width:' + width + '%;background:' + projectColors[pn] + '">' +
           (showVal ? '<span class="pp-bar-value">' + solvedDi.toFixed(1) + '</span>' : '') +
         '</div>';
@@ -1214,7 +1286,7 @@ function renderHR() {
       var unsolvedDi = pData.unsolved[pn] || 0;
       if (unsolvedDi > 0) {
         var width = (unsolvedDi / maxDi * 100).toFixed(1);
-        var showVal = parseFloat(width) > 5;
+        var showVal = parseFloat(width) > 3;  // 降低阈值到3%
         segments += '<div class="pp-bar-segment" style="width:' + width + '%;background:' + projectColors[pn] + ';opacity:0.6">' +
           (showVal ? '<span class="pp-bar-value">' + unsolvedDi.toFixed(1) + '</span>' : '') +
         '</div>';
@@ -1267,8 +1339,7 @@ function renderHR() {
       reopenRows + '</div>';
   }
 
-  return '<div class="page-header"><div class="page-title">人力资源</div><div class="page-desc">人员效能与项目投入分析</div></div>' +
-    sections +
+  return sections +
     '<div class="pp-chart"><div class="chart-title">资源分布</div>' +
     '<div class="pp-legend">' + legendItems + '</div>' +
     chartRows + '</div>' +
@@ -1286,23 +1357,18 @@ function renderTimelinePage() {
 }
 
 function renderVersionPlan() {
-  var plans = [];
-  Object.keys(VERSION_PLAN).forEach(function(proj) {
-    VERSION_PLAN[proj].forEach(function(p) { plans.push(p); });
-  });
+  var plans = VERSION_PLAN || [];
   if (plans.length === 0) {
     return '<div class="page-header"><div class="page-title">版本计划</div><div class="page-desc">各项目版本开发计划</div></div>' +
       '<div style="text-align:center;padding:60px;color:var(--text-secondary)">暂无版本计划数据</div>';
   }
   var cards = '';
   plans.forEach(function(p) {
-    var overview = p.overview.replace(/\n/g, '<br>');
+    var overview = p.overview ? p.overview.replace(/\n/g, '<br>') : '';
     cards += '<div class="stat-card" style="cursor:default">' +
-      '<div style="font-size:15px;font-weight:700;margin-bottom:10px">' + p.name + '</div>' +
-      '<div style="font-size:13px;color:var(--text-secondary);line-height:1.8;margin-bottom:12px">' + overview + '</div>';
-    if (p.link) {
-      cards += '<a href="' + p.link + '" target="_blank" style="font-size:12px;color:var(--blue);text-decoration:none;font-weight:600">查看文档 →</a>';
-    }
+      '<div style="font-size:16px;font-weight:700;margin-bottom:10px;color:var(--blue)">' + p.name + '</div>' +
+      (overview ? '<div style="font-size:13px;color:var(--text-secondary);line-height:1.8;margin-bottom:12px">' + overview + '</div>' : '') +
+      (p.link ? '<a href="' + p.link + '" target="_blank" style="display:inline-block;padding:4px 12px;background:var(--blue);color:#fff;border-radius:4px;font-size:12px;text-decoration:none;font-weight:600">链接</a>' : '');
     cards += '</div>';
   });
   return '<div class="page-header"><div class="page-title">版本计划</div><div class="page-desc">各项目版本开发计划</div></div>' +
