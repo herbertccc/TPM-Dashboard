@@ -16,6 +16,13 @@ FEISHU_MILESTONE_SHEET = {
     'token': 'YyjLsmNSWhH2wdtT4fac41O0n8d', 'sheet_id': '6fb317',
 }
 
+# 硬编码备用项目列表（当飞书文件夹API返回不完整时使用）
+FALLBACK_PROJECT_CONFIG = {
+    'B30': {'token': 'MWhYscs5Phtt24tND10cBzptnVb'},
+    'WR 02 SE': {'token': 'Hy7PsePRBhyGW5tfLnGcJdEfnnb'},
+    'E1W': {'token': 'DyyRsEM82hDniLtmI2acZd9rnDf'},
+}
+
 # ===== 飞书数据读取 =====
 # 调试：输出当前模式
 print(f"🔧 FEISHU_APP_ID={'已设置' if FEISHU_APP_ID else '未设置（使用 lark-cli 模式）'}")
@@ -195,6 +202,20 @@ def _discover_projects():
                     projects[name] = {'token': token, 'sheet_id': FEISHU_DEFAULT_SHEET_ID}
         except (json.JSONDecodeError, KeyError):
             print('   ⚠️ 无法解析文件夹列表，使用空项目列表')
+
+    # 后备方案：确保关键项目不丢失（动态发现可能因权限/缓存问题返回不完整结果）
+    if len(projects) < len(FALLBACK_PROJECT_CONFIG):
+        print(f'   📋 动态发现 {len(projects)} 个项目，不足预期 {len(FALLBACK_PROJECT_CONFIG)} 个，补充备用列表')
+        for name, info in FALLBACK_PROJECT_CONFIG.items():
+            if name not in projects:
+                token = info['token']
+                print(f'   📄 补充项目: {name} (token={token})')
+                if FEISHU_APP_ID:
+                    sheet_id = _feishu_get_first_sheet_id(token)
+                else:
+                    sheet_id = FEISHU_DEFAULT_SHEET_ID
+                projects[name] = {'token': token, 'sheet_id': sheet_id}
+
     return projects
 
 
@@ -644,9 +665,24 @@ if ms_vals and len(ms_vals) > 1:
 # 读取版本计划数据 - 从飞书表格读取
 version_plan = []
 VP_SPREADSHEET_TOKEN = 'ApFaswCTXhnKbitbTnrcL0tinCe'
-VP_SHEET_ID = 'default'  # 使用默认工作表
+VP_SHEET_ID = None  # 动态获取第一个工作表的 sheet_id
 
 try:
+    # 获取版本计划表的实际 sheet_id
+    if FEISHU_APP_ID:
+        meta = _feishu_api_get(f'/sheets/v2/spreadsheets/{VP_SPREADSHEET_TOKEN}/metainfo')
+    else:
+        result = subprocess.run(
+            ['lark-cli', 'sheets', 'meta', '--spreadsheet-token', VP_SPREADSHEET_TOKEN, '--as', 'bot', '--format', 'json'],
+            capture_output=True, text=True, timeout=30
+        )
+        meta = json.loads(result.stdout).get('data', {})
+    if meta and 'sheets' in meta and len(meta['sheets']) > 0:
+        VP_SHEET_ID = meta['sheets'][0]['sheetId']
+        print(f'📋 版本计划 sheet_id: {VP_SHEET_ID}')
+    if not VP_SHEET_ID:
+        VP_SHEET_ID = 'default'
+        print(f'⚠️ 无法获取版本计划 sheet_id，使用 default')
     if FEISHU_APP_ID:
         vp_values = _feishu_read_sheet(VP_SPREADSHEET_TOKEN, VP_SHEET_ID)
     else:
@@ -779,22 +815,24 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",san
 .tl-today-line { position:absolute; top:0; bottom:0; width:2px; background:rgba(255,152,0,0.35); z-index:2; pointer-events:none; }
 .tl-today-label { position:absolute; bottom:-18px; left:50%; transform:translateX(-50%); font-size:11px; color:var(--orange); font-weight:700; white-space:nowrap; }
 .tl-today-top-label { position:absolute; top:4px; left:50%; transform:translateX(-50%); font-size:11px; color:var(--orange); font-weight:700; white-space:nowrap; background:rgba(255,255,255,0.85); padding:1px 6px; border-radius:3px; }
-.tl-project-row { margin-bottom:20px; }
+.tl-project-row { margin-bottom:24px; }
 .tl-project-row:last-child { margin-bottom:0; }
 .tl-names-col .tl-project-name { font-size:13px; font-weight:700; color:var(--text); padding:0 12px; position:absolute; top:6px; left:0; right:0; }
 .tl-names-col .tl-name-spacer { height:86px; }
 .tl-names-col .tl-name-track { height:14px; position:relative; }
 .tl-names-col .tl-name-card-area { }
 .tl-track { position:relative; height:14px; }
-.tl-track::before { content:''; position:absolute; top:6px; left:0; right:0; height:2px; background:var(--border); }
-.tl-dot { position:absolute; top:0; width:14px; height:14px; border-radius:50%; background:var(--blue); border:2.5px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,0.18); transform:translateX(-50%); z-index:2; }
-.tl-dot.pass { background:var(--green); }
-.tl-dot.delay { background:var(--red); }
-.tl-dot.progress { background:var(--orange); }
+.tl-track::before { content:''; position:absolute; top:6px; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--border) 0%,#d5d8de 50%,var(--border) 100%); border-radius:1px; }
+.tl-dot { position:absolute; top:0; width:14px; height:14px; border-radius:50%; background:var(--blue); border:2.5px solid #fff; box-shadow:0 1px 4px rgba(22,93,255,0.3); transform:translateX(-50%); z-index:2; transition:transform 0.15s; }
+.tl-dot:hover { transform:translateX(-50%) scale(1.2); }
+.tl-dot.pass { background:var(--green); box-shadow:0 1px 4px rgba(0,180,42,0.3); }
+.tl-dot.delay { background:var(--red); box-shadow:0 1px 4px rgba(245,63,63,0.3); }
+.tl-dot.progress { background:var(--orange); box-shadow:0 1px 4px rgba(255,125,0,0.3); }
 .tl-card-area { position:relative; }
-.tl-card { position:absolute; transform:translateX(-50%); background:#f8f9fb; border:1px solid var(--border); border-radius:8px; padding:10px 14px; min-width:140px; max-width:200px; z-index:2; }
+.tl-card { position:absolute; transform:translateX(-50%); background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px 16px; min-width:150px; max-width:210px; z-index:2; box-shadow:0 2px 8px rgba(0,0,0,0.06); transition:box-shadow 0.2s,transform 0.15s; }
+.tl-card:hover { box-shadow:0 4px 16px rgba(0,0,0,0.12); transform:translateX(-50%) translateY(-2px); }
 .tl-card-name { font-size:13px; font-weight:700; color:var(--text); margin-bottom:4px; }
-.tl-card-item { font-size:11px; color:var(--text-secondary); margin-bottom:4px; line-height:1.4; }
+.tl-card-item { font-size:11px; color:var(--text-secondary); margin-bottom:4px; line-height:1.5; }
 .tl-card-risk { font-size:11px; color:var(--red); line-height:1.5; margin-bottom:6px; }
 .tl-card-status { display:inline-block; padding:2px 10px; border-radius:4px; font-size:11px; font-weight:700; }
 .tl-card-status.pass { background:#e8ffea; color:#00b42a; }
@@ -802,7 +840,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",san
 .tl-card-status.progress { background:#fff7e6; color:#ff7d00; }
 .tl-card-status.default { background:#f2f3f5; color:var(--text-secondary); }
 .tl-card-date { font-size:10px; color:var(--text-secondary); margin-bottom:4px; }
-.tl-connector { position:absolute; width:1px; background:var(--border); z-index:1; }
+.tl-connector { position:absolute; width:1px; background:linear-gradient(180deg,var(--border) 0%,rgba(229,230,235,0.3) 100%); z-index:1; }
 .role-section { margin-bottom:24px; }
 .role-title { font-size:15px; font-weight:700; margin-bottom:12px; padding-left:12px; border-left:3px solid var(--blue); }
 .hr-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; }
@@ -847,7 +885,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",san
 .hr-table tbody tr:nth-child(even) { background:#fafbfc; }
 .hr-table tbody tr:hover { background:#f0f4ff; }
 .hr-table tbody td { padding:12px 16px; font-size:13px; text-align:center; border-bottom:1px solid #f0f1f3; }
-.hr-table tbody td:first-child { text-align:left; padding-left:20px; font-weight:600; }
+.hr-table tbody td:first-child { text-align:left; padding-left:20px; }
 .hr-table tbody tr:last-child td { border-bottom:none; }
 .hr-pill { display:inline-block; padding:2px 10px; border-radius:10px; font-size:12px; font-weight:600; }
 .hr-metric { display:flex; flex-direction:column; align-items:center; gap:2px; }
@@ -1231,7 +1269,7 @@ function renderHR() {
         '<td>' + p.name + '</td>' +
         '<td><span style="font-size:12px;color:var(--text-secondary)">' + role + '</span></td>' +
         '<td style="color:' + srTextColor + '">' + p.solved_tickets + '/' + p.total_tickets + '（' + sr + '%）</td>' +
-        '<td><span style="font-weight:700;font-size:14px;color:var(--red)">' + p.total_open_di.toFixed(1) + '</span></td>' +
+        '<td style="color:' + (p.total_open_di > 0 ? 'var(--red)' : 'var(--text)') + '">' + p.total_open_di.toFixed(1) + '</td>' +
         '<td style="color:' + slaTextColor + '">' + p.total_sla + (p.sla_days_count > 0 ? '（均' + slaAvg + '天）' : '') + '</td>' +
         '<td style="color:' + reopenTextColor + '">' + p.total_reopen + '</td>' +
         '</tr>';
@@ -1337,23 +1375,7 @@ function renderHR() {
     legendItems += '<span><i style="background:' + projectColors[pn] + '"></i>' + pn + '</span>';
   });
 
-  // 重开次数独立柱状图 - 按项目分色，与资源分布样式一致
-  // 收集每个人在各项目的重开次数
-  var personProjectReopen = {};
-  PROJECT_NAMES.forEach(function(pn) {
-    PROJECTS_DATA[pn].bugs.forEach(function(b) {
-      if (b.assignee) {
-        if (!personProjectReopen[b.assignee]) {
-          personProjectReopen[b.assignee] = {};
-        }
-        var reopen = b.reopen_count || 0;
-        if (reopen > 0) {
-          personProjectReopen[b.assignee][pn] = (personProjectReopen[b.assignee][pn] || 0) + reopen;
-        }
-      }
-    });
-  });
-
+  // 重开次数独立柱状图 - 统一橙色
   var reopenPersons = allPersons.filter(function(p) { return p.total_reopen > 0; });
   reopenPersons.sort(function(a, b) { return b.total_reopen - a.total_reopen; });
   var maxReopen = reopenPersons.length > 0 ? reopenPersons[0].total_reopen : 1;
@@ -1361,27 +1383,18 @@ function renderHR() {
 
   var reopenRows = '';
   reopenPersons.forEach(function(p) {
-    var pData = personProjectReopen[p.name] || {};
-    var segments = '';
-    
-    // 按项目渲染重开次数段
-    PROJECT_NAMES.forEach(function(pn) {
-      var projReopen = pData[pn] || 0;
-      if (projReopen > 0) {
-        var width = (projReopen / maxReopen * 100).toFixed(1);
-        var showVal = parseFloat(width) > 3;
-        segments += '<div class="pp-bar-segment" style="width:' + width + '%;background:' + projectColors[pn] + '">' +
-          (showVal ? '<span class="pp-bar-value">' + projReopen + '</span>' : '') +
-        '</div>';
-      }
-    });
-    
+    var width = (p.total_reopen / maxReopen * 100).toFixed(1);
+    var showVal = parseFloat(width) > 3;
+    var segment = '<div class="pp-bar-segment" style="width:' + width + '%;background:var(--orange)">' +
+      (showVal ? '<span class="pp-bar-value">' + p.total_reopen + '</span>' : '') +
+    '</div>';
+
     reopenRows += '<div class="pp-row">' +
       '<div class="pp-name">' + p.name + '</div>' +
       '<div style="flex:1;display:flex;align-items:center">' +
         '<div style="flex:1">' +
           '<div class="pp-bar-line" style="position:relative">' +
-            segments +
+            segment +
           '</div>' +
         '</div>' +
         '<div class="pp-bar-sla">重开:' + p.total_reopen + '</div>' +
@@ -1392,7 +1405,6 @@ function renderHR() {
   var reopenChart = '';
   if (reopenPersons.length > 0) {
     reopenChart = '<div class="pp-chart"><div class="chart-title">代码质量</div>' +
-      '<div class="pp-legend">' + legendItems + '</div>' +
       reopenRows + '</div>';
   }
 
@@ -1498,6 +1510,37 @@ function _renderTimelineInner(viewport, projects) {
 
   var today = new Date(); today.setHours(0,0,0,0);
 
+  // 项目排序：日期越靠近当前越靠前，"已延期"状态优先
+  projects.sort(function(a, b) {
+    var msA = MILESTONES[a] || [];
+    var msB = MILESTONES[b] || [];
+    var hasDelayA = msA.some(function(m) { return m.status === '已延期'; });
+    var hasDelayB = msB.some(function(m) { return m.status === '已延期'; });
+    // 已延期优先
+    if (hasDelayA && !hasDelayB) return -1;
+    if (!hasDelayA && hasDelayB) return 1;
+    // 找最近的有效日期（非"已通过"）
+    function closestDate(msList) {
+      var futureDates = msList.filter(function(m) {
+        return m.date && m.status !== '已通过' && !isNaN(new Date(m.date).getTime());
+      }).map(function(m) { return new Date(m.date); });
+      if (futureDates.length === 0) {
+        // 如果没有未来日期，用所有日期中最近的
+        futureDates = msList.filter(function(m) {
+          return m.date && !isNaN(new Date(m.date).getTime());
+        }).map(function(m) { return new Date(m.date); });
+      }
+      if (futureDates.length === 0) return new Date(8640000000000000);
+      futureDates.sort(function(x, y) {
+        return Math.abs(x - today) - Math.abs(y - today);
+      });
+      return futureDates[0];
+    }
+    var dateA = closestDate(msA);
+    var dateB = closestDate(msB);
+    return Math.abs(dateA - today) - Math.abs(dateB - today);
+  });
+
   // 数据范围（前后各扩展3天）
   tlDataStart = new Date(Math.min.apply(null, allDates));
   tlDataEnd = new Date(Math.max.apply(null, allDates));
@@ -1533,7 +1576,9 @@ function _renderTimelineInner(viewport, projects) {
   // 滚动范围限制
   var earliestPx = 0;
   var latestPx = innerWidth - viewWidth;
-  var defaultStartPx = padLeft; // 默认显示从tlDataStart开始
+  // 初始视图居中到今天（与"回到当前"按钮行为一致）
+  var todayOffsetPx = Math.round((today - renderStart) / 86400000) * tlDayWidth;
+  var defaultStartPx = Math.max(earliestPx, Math.min(todayOffsetPx - viewWidth / 2, latestPx));
 
   function datePx(dateStr) {
     var d = new Date(dateStr); d.setHours(0,0,0,0);
