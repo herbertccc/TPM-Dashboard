@@ -233,7 +233,8 @@ def _excel_serial_to_date_str(val):
         val = val.strip()
         if not val:
             return ""
-        # 已经是标准日期格式 (含 '-')
+        
+        # 检查是否已经是标准日期格式 (含 '-')
         if '-' in val and len(val) >= 10:
             # 提取日期部分（去掉时间）
             date_part = val.split(' ')[0]
@@ -243,11 +244,33 @@ def _excel_serial_to_date_str(val):
                 return date_part
             except ValueError:
                 pass
-        # 尝试解析为数字
+        
+        # 检查是否为中文日期格式，如 "7月14日" 或 "2026年7月14日"
+        import re
+        chinese_date_pattern = r'(\d{1,4})年(\d{1,2})月(\d{1,2})日|(\d{1,2})月(\d{1,2})日'
+        match = re.search(chinese_date_pattern, val)
+        if match:
+            if match.group(1):  # 包含年份的情况
+                year = int(match.group(1))
+                month = int(match.group(2))
+                day = int(match.group(3))
+            else:  # 不包含年份的情况
+                # 使用当前年份作为默认年份
+                current_year = datetime.now().year
+                month = int(match.group(4))
+                day = int(match.group(5))
+                year = current_year
+            try:
+                dt = datetime(year, month, day)
+                return dt.strftime('%Y-%m-%d')
+            except ValueError:
+                pass
+        
+        # 尝试解析为数字（Excel 序列号）
         try:
             serial = int(float(val))
         except (ValueError, TypeError):
-            # 如果是中文格式如 "7月14日"，无法转换，返回空
+            # 无法转换的字符串，返回空
             return ""
     elif isinstance(val, (int, float)):
         serial = int(val)
