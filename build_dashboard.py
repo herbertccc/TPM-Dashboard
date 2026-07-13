@@ -71,6 +71,37 @@ def _feishu_get_first_sheet_id(spreadsheet_token):
     return FEISHU_DEFAULT_SHEET_ID
 
 
+def _lark_get_first_sheet_id(spreadsheet_token):
+    """获取电子表格第一个工作表的 sheet_id（本地 lark-cli 模式）"""
+    result = subprocess.run(
+        ['lark-cli', 'sheets', '+info', '--spreadsheet-token', spreadsheet_token, '--as', 'bot'],
+        capture_output=True, text=True, timeout=30
+    )
+    stdout = result.stdout.strip()
+    json_start = stdout.find('{')
+    if json_start >= 0:
+        stdout = stdout[json_start:]
+    try:
+        data = json.loads(stdout).get('data', {})
+    except json.JSONDecodeError:
+        return FEISHU_DEFAULT_SHEET_ID
+    if data and 'sheets' in data:
+        sheets_list = data['sheets']
+        if isinstance(sheets_list, dict) and 'sheets' in sheets_list:
+            sheets_list = sheets_list['sheets']
+        if isinstance(sheets_list, list) and len(sheets_list) > 0:
+            return sheets_list[0].get('sheetId') or sheets_list[0].get('sheet_id') or FEISHU_DEFAULT_SHEET_ID
+    return FEISHU_DEFAULT_SHEET_ID
+
+
+def _get_first_sheet_id(spreadsheet_token):
+    """获取第一个 sheet_id，自动选择云端或本地模式"""
+    if FEISHU_APP_ID:
+        return _feishu_get_first_sheet_id(spreadsheet_token)
+    else:
+        return _lark_get_first_sheet_id(spreadsheet_token)
+
+
 def _feishu_get_sheet_id_by_name(spreadsheet_token, sheet_name):
     """根据名称获取 sheet_id，找不到返回 None"""
     if FEISHU_APP_ID:
@@ -224,8 +255,9 @@ def _discover_projects():
                     name = f['name']
                     token = f['token']
                     print(f'   📄 发现项目: {name} (token={token})')
-                    # 本地模式使用默认 sheet_id
-                    projects[name] = {'token': token, 'sheet_id': FEISHU_DEFAULT_SHEET_ID}
+                    # 本地模式：获取第一个 sheet_id
+                    sheet_id = _lark_get_first_sheet_id(token)
+                    projects[name] = {'token': token, 'sheet_id': sheet_id}
         except (json.JSONDecodeError, KeyError):
             print('   ⚠️ 无法解析文件夹列表，使用空项目列表')
 
@@ -234,10 +266,7 @@ def _discover_projects():
         if name not in projects:
             token = info['token']
             print(f'   📄 补充关键项目: {name} (token={token})')
-            if FEISHU_APP_ID:
-                sheet_id = _feishu_get_first_sheet_id(token)
-            else:
-                sheet_id = FEISHU_DEFAULT_SHEET_ID
+            sheet_id = _get_first_sheet_id(token)
             projects[name] = {'token': token, 'sheet_id': sheet_id}
 
     return projects
@@ -847,7 +876,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",san
 .tl-nav-btn.right { border-radius:0 8px 8px 0; border-left:none; }
 .tl-viewport { flex:1; display:flex; overflow:hidden; position:relative; background:#fafbfc; min-width:0; }
 .tl-names-col { width:110px; flex-shrink:0; overflow-y:auto; overflow-x:hidden; border-right:1px solid var(--border); background:#fff; z-index:3; }
-.tl-scroll-area { flex:1; overflow-x:auto; overflow-y:hidden; }
+.tl-scroll-area { flex:1; overflow-x:hidden; overflow-y:hidden; cursor:grab; }
 .tl-timeline-body { position:relative; padding-top:60px; padding-bottom:22px; }
 .tl-day-cols { display:flex; }
 .tl-day-col { flex-shrink:0; border-right:1px solid #f0f1f3; }
@@ -1776,6 +1805,32 @@ function _renderTimelineInner(viewport, projects) {
 
   // 滚动到默认位置（数据最早日期处 = tlDataStart）
   scrollArea.scrollLeft = Math.max(earliestPx, Math.min(defaultStartPx, latestPx));
+
+  // 鼠标拖拽横向滚动
+  (function() {
+    var isDragging = false;
+    var startX = 0;
+    var startScrollLeft = 0;
+    scrollArea.addEventListener('mousedown', function(e) {
+      // 点击卡片/链接等可交互元素时不启动拖拽
+      if (e.target.closest('a, button, .tl-card')) return;
+      isDragging = true;
+      startX = e.pageX;
+      startScrollLeft = scrollArea.scrollLeft;
+      scrollArea.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!isDragging) return;
+      var dx = e.pageX - startX;
+      scrollArea.scrollLeft = startScrollLeft - dx;
+    });
+    document.addEventListener('mouseup', function() {
+      if (!isDragging) return;
+      isDragging = false;
+      scrollArea.style.cursor = 'grab';
+    });
+  })();
 }
 
 function panTimeline(dir) {
