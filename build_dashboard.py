@@ -478,7 +478,7 @@ def read_project_bugs(rows, person_mapping=None):
         is_aiot = bug["db_dept"] == "AIOT"
         if is_aiot:
             status = bug["status"]
-            if status == "已关闭":
+            if status in ("已关闭", "已完成"):
                 bug["openDI"] = 0
                 bug["solvedDI"] = 0
                 bug["unsolvedDI"] = 0
@@ -536,6 +536,9 @@ def calc_stats(bugs):
     # BLOCK问题
     block = sum(1 for b in bugs if b["status"] not in ("已关闭", "已解决") and b["release_ctrl"] == "高风险问题")
     
+    # 待回归：状态为"已解决"或"已拒绝"的任务的 DB-DI 值合计
+    pending_regression = sum(b["rawWeight"] for b in bugs if b["status"] in ("已解决", "已拒绝"))
+    
     resolve_rate = f"{resolved / total * 100:.1f}" if total > 0 else "0.0"
     
     # 健康度判定（四级：健康/一般/较差/严重）
@@ -551,6 +554,7 @@ def calc_stats(bugs):
     return {
         "total": total, "resolved": resolved, "open_di": round(open_di, 1),
         "sla": sla, "block": block, "resolve_rate": resolve_rate, "health": health,
+        "pending_regression": round(pending_regression, 1),
     }
 
 
@@ -561,7 +565,7 @@ for pn in PROJECT_NAMES:
 
 # ===== 趋势计算（总览）=====
 def calc_trend(all_bugs):
-    """计算所有项目聚合的近30天趋势 - 每天统计实际OPEN DI"""
+    """计算所有项目聚合的近30天趋势"""
     now = datetime.now()
     dates = [(now - timedelta(days=i)).strftime("%m-%d") for i in range(29, -1, -1)]
     date_objs = [(now - timedelta(days=i)).date() for i in range(29, -1, -1)]
@@ -569,30 +573,32 @@ def calc_trend(all_bugs):
     daily_new = defaultdict(float)
     daily_resolved = defaultdict(float)
     
-    # 收集所有AIOT部门的bug并预处理日期
+    # 收集所有AIOT部门的bug
     all_bug_list = []
     for pn, bugs in all_bugs.items():
         for b in bugs:
             if b["db_dept"] != "AIOT":
                 continue
             all_bug_list.append(b)
-            if b["_created_dt"]:
-                d = b["_created_dt"].strftime("%m-%d")
-                if d in date_set:
-                    daily_new[d] += b["rawWeight"]
-            if b["_resolved_dt"]:
+            status = b["status"]
+            # 已解决/已关闭/已完成 → 按解决时间计入每日解决
+            if status in ("已解决", "已关闭", "已完成") and b["_resolved_dt"]:
                 d = b["_resolved_dt"].strftime("%m-%d")
                 if d in date_set:
                     daily_resolved[d] += b["rawWeight"]
+            # 其他状态 → 按创建时间计入每日新增
+            elif status not in ("已解决", "已关闭", "已完成") and b["_created_dt"]:
+                d = b["_created_dt"].strftime("%m-%d")
+                if d in date_set:
+                    daily_new[d] += b["rawWeight"]
     
-    # 每天的OPEN DI = 当天及之前创建的非已关闭AIOT bug的DI值之和
-    # 与统计表口径一致：OPEN DI = AIOT且状态≠已关闭
+    # OPEN DI = 状态非"已关闭"且非"已完成"的 AIOT bug 的 DI 值之和
     cum_list = []
     for d_str, d_date in zip(dates, date_objs):
         open_di = 0.0
         for b in all_bug_list:
-            if b["status"] == "已关闭":
-                continue  # 已关闭始终不计
+            if b["status"] in ("已关闭", "已完成"):
+                continue
             if b["_created_dt"] and b["_created_dt"].date() <= d_date:
                 open_di += b["rawWeight"]
         cum_list.append(round(open_di, 1))
@@ -605,7 +611,7 @@ trend_dates_str, cumulative_di, daily_new_di, daily_resolved_di = calc_trend(all
 
 # ===== 单项目趋势计算 =====
 def calc_single_project_trend(bugs):
-    """计算单个项目的近30天趋势 - 每天统计实际OPEN DI"""
+    """计算单个项目的近30天趋势"""
     now = datetime.now()
     dates = [(now - timedelta(days=i)).strftime("%m-%d") for i in range(29, -1, -1)]
     date_objs = [(now - timedelta(days=i)).date() for i in range(29, -1, -1)]
@@ -616,14 +622,17 @@ def calc_single_project_trend(bugs):
     for b in bugs:
         if b["db_dept"] != "AIOT":
             continue
-        if b["_created_dt"]:
-            d = b["_created_dt"].strftime("%m-%d")
-            if d in date_set:
-                daily_new[d] += b["rawWeight"]
-        if b["_resolved_dt"]:
+        status = b["status"]
+        # 已解决/已关闭/已完成 → 按解决时间计入每日解决
+        if status in ("已解决", "已关闭", "已完成") and b["_resolved_dt"]:
             d = b["_resolved_dt"].strftime("%m-%d")
             if d in date_set:
                 daily_resolved[d] += b["rawWeight"]
+        # 其他状态 → 按创建时间计入每日新增
+        elif status not in ("已解决", "已关闭", "已完成") and b["_created_dt"]:
+            d = b["_created_dt"].strftime("%m-%d")
+            if d in date_set:
+                daily_new[d] += b["rawWeight"]
     
     cum_list = []
     for d_str, d_date in zip(dates, date_objs):
@@ -631,7 +640,7 @@ def calc_single_project_trend(bugs):
         for b in bugs:
             if b["db_dept"] != "AIOT":
                 continue
-            if b["status"] == "已关闭":
+            if b["status"] in ("已关闭", "已完成"):
                 continue
             if b["_created_dt"] and b["_created_dt"].date() <= d_date:
                 open_di += b["rawWeight"]
@@ -1133,10 +1142,11 @@ function renderOverview() {
     var rr = parseFloat(s.resolve_rate);
     var rrColor = rr >= 90 ? '#00b42a' : rr >= 75 ? '#ff7d00' : '#f53f3f';
     var rrBg = rr >= 90 ? '#e8ffea' : rr >= 75 ? '#fff7e6' : '#fff2f0';
+    var pr = s.pending_regression || 0;
     tableRows += '<tr>' +
       '<td><span style="font-weight:600">' + p + '</span></td>' +
-      '<td>' + getHealthLabel(s.health) + '</td>' +
       '<td><span style="font-weight:700;font-size:14px;color:var(--red)">' + s.open_di.toFixed(1) + '</span></td>' +
+      '<td><span style="font-weight:600;color:' + (pr > 0 ? 'var(--orange)' : 'var(--text)') + '">' + pr.toFixed(1) + '</span></td>' +
       '<td><div class="hr-metric"><span class="hr-pill" style="background:' + rrBg + ';color:' + rrColor + '">' + s.resolve_rate + '%</span></div></td>' +
       '<td><span class="hr-pill" style="background:' + (s.sla > 0 ? '#fff7e6' : '#f2f3f5') + ';color:' + (s.sla > 0 ? '#ff7d00' : 'var(--text)') + '">' + s.sla + '</span></td>' +
       '<td><span class="hr-pill" style="background:' + (s.block > 0 ? '#fff2f0' : '#f2f3f5') + ';color:' + (s.block > 0 ? '#f53f3f' : 'var(--text)') + '">' + s.block + '</span></td>' +
@@ -1155,8 +1165,8 @@ function renderOverview() {
       '<table class="hr-table">' +
       '<thead><tr>' +
       '<th>项目名</th>' +
-      '<th>状态</th>' +
       '<th>OPEN DI</th>' +
+      '<th>待回归</th>' +
       '<th>解决率</th>' +
       '<th>SLA超时题数</th>' +
       '<th>BLOCK问题数</th>' +
@@ -1167,7 +1177,7 @@ function renderOverview() {
 function buildOverviewRisk() {
   // 聚合AIOT部门人员统计（风险识别仅针对AIOT）
   var pm = {};
-  var aggStats = {total:0, resolved:0, open_di:0, sla:0, block:0, resolve_rate:'0.0', health:'normal'};
+  var aggStats = {total:0, resolved:0, open_di:0, sla:0, block:0, resolve_rate:'0.0', health:'normal', pending_regression:0};
   PROJECT_NAMES.forEach(function(pn) {
     var bugs = PROJECTS_DATA[pn].bugs;
     var s = PROJECTS_DATA[pn].stats;
@@ -1176,6 +1186,7 @@ function buildOverviewRisk() {
     aggStats.open_di += s.open_di;
     aggStats.sla += s.sla;
     aggStats.block += s.block;
+    aggStats.pending_regression += (s.pending_regression || 0);
     bugs.forEach(function(b) {
       if (b.db_dept !== 'AIOT') return;
       if (!pm[b.assignee]) pm[b.assignee] = {name:b.assignee, total:0, resolved:0, reopen:0, openDI:0, sla:0, slaDaysSum:0, slaDaysCount:0, role:b.db_role||'', dept:b.db_dept||''};
@@ -1911,6 +1922,6 @@ print("✅ index.html 生成成功！")
 print(f"   - 项目数: {len(PROJECT_NAMES)}")
 for pn in PROJECT_NAMES:
     s = projects_stats[pn]
-    print(f"   - {pn}: OPEN DI={s['open_di']}, SLA超时={s['sla']}, BLOCK={s['block']}, 解决率={s['resolve_rate']}%, 健康度={s['health']}")
+    print(f"   - {pn}: OPEN DI={s['open_di']}, 待回归={s['pending_regression']}, SLA超时={s['sla']}, BLOCK={s['block']}, 解决率={s['resolve_rate']}%, 健康度={s['health']}")
 print(f"   - 人员数: {len(person_project_stats)}")
 print(f"   - 趋势天数: {len(trend_dates_str)}")
