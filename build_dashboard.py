@@ -73,11 +73,29 @@ def _feishu_get_first_sheet_id(spreadsheet_token):
 
 def _feishu_get_sheet_id_by_name(spreadsheet_token, sheet_name):
     """根据名称获取 sheet_id，找不到返回 None"""
-    data = _feishu_api_get(f'/sheets/v2/spreadsheets/{spreadsheet_token}/metainfo')
+    if FEISHU_APP_ID:
+        data = _feishu_api_get(f'/sheets/v2/spreadsheets/{spreadsheet_token}/metainfo')
+    else:
+        result = subprocess.run(
+            ['lark-cli', 'sheets', '+info', '--spreadsheet-token', spreadsheet_token, '--as', 'bot'],
+            capture_output=True, text=True, timeout=30
+        )
+        stdout = result.stdout.strip()
+        json_start = stdout.find('{')
+        if json_start >= 0:
+            stdout = stdout[json_start:]
+        try:
+            data = json.loads(stdout).get('data', {})
+        except json.JSONDecodeError:
+            data = None
     if data and 'sheets' in data:
-        for s in data['sheets']:
-            if s.get('title', '') == sheet_name:
-                return s.get('sheetId')
+        sheets_list = data['sheets']
+        if isinstance(sheets_list, dict) and 'sheets' in sheets_list:
+            sheets_list = sheets_list['sheets']
+        if isinstance(sheets_list, list):
+            for s in sheets_list:
+                if s.get('title', '') == sheet_name:
+                    return s.get('sheetId') or s.get('sheet_id')
     return None
 
 
@@ -137,11 +155,19 @@ def _lark_read_sheet(spreadsheet_token, sheet_id):
     """通过 lark-cli 读取表格数据（本地开发模式）"""
     result = subprocess.run(
         ['lark-cli', 'sheets', '+read', '--spreadsheet-token', spreadsheet_token,
-         '--sheet-id', sheet_id, '--range', 'A1:T200',
-         '--params', json.dumps({'valueRenderOption': 'FormattedValue'}, separators=(',', ':'))],
+         '--sheet-id', sheet_id, '--range', 'A1:T200', '--as', 'bot',
+         '--value-render-option', 'FormattedValue'],
         capture_output=True, text=True, timeout=30
     )
-    data = json.loads(result.stdout)
+    stdout = result.stdout.strip()
+    json_start = stdout.find('{')
+    if json_start >= 0:
+        stdout = stdout[json_start:]
+    try:
+        data = json.loads(stdout)
+    except json.JSONDecodeError:
+        print(f'   ⚠️ 表格 {spreadsheet_token} 输出无法解析为 JSON，跳过')
+        return None
     if data.get('data', {}).get('valueRange', {}).get('values'):
         return data['data']['valueRange']['values']
     print(f'   ⚠️ 表格 {spreadsheet_token} 无有效数据，跳过')
@@ -204,17 +230,15 @@ def _discover_projects():
             print('   ⚠️ 无法解析文件夹列表，使用空项目列表')
 
     # 后备方案：确保关键项目不丢失（动态发现可能因权限/缓存问题返回不完整结果）
-    if len(projects) < len(FALLBACK_PROJECT_CONFIG):
-        print(f'   📋 动态发现 {len(projects)} 个项目，不足预期 {len(FALLBACK_PROJECT_CONFIG)} 个，补充备用列表')
-        for name, info in FALLBACK_PROJECT_CONFIG.items():
-            if name not in projects:
-                token = info['token']
-                print(f'   📄 补充项目: {name} (token={token})')
-                if FEISHU_APP_ID:
-                    sheet_id = _feishu_get_first_sheet_id(token)
-                else:
-                    sheet_id = FEISHU_DEFAULT_SHEET_ID
-                projects[name] = {'token': token, 'sheet_id': sheet_id}
+    for name, info in FALLBACK_PROJECT_CONFIG.items():
+        if name not in projects:
+            token = info['token']
+            print(f'   📄 补充关键项目: {name} (token={token})')
+            if FEISHU_APP_ID:
+                sheet_id = _feishu_get_first_sheet_id(token)
+            else:
+                sheet_id = FEISHU_DEFAULT_SHEET_ID
+            projects[name] = {'token': token, 'sheet_id': sheet_id}
 
     return projects
 
@@ -666,6 +690,7 @@ if ms_vals and len(ms_vals) > 1:
 version_plan = []
 VP_SPREADSHEET_TOKEN = 'ApFaswCTXhnKbitbTnrcL0tinCe'
 VP_SHEET_ID = None  # 动态获取第一个工作表的 sheet_id
+VP_KNOWN_SHEET_ID = '716005'  # 已知版本计划 sheet_id（后备）
 
 try:
     # 获取版本计划表的实际 sheet_id
@@ -673,16 +698,24 @@ try:
         meta = _feishu_api_get(f'/sheets/v2/spreadsheets/{VP_SPREADSHEET_TOKEN}/metainfo')
     else:
         result = subprocess.run(
-            ['lark-cli', 'sheets', 'meta', '--spreadsheet-token', VP_SPREADSHEET_TOKEN, '--as', 'bot', '--format', 'json'],
+            ['lark-cli', 'sheets', '+info', '--spreadsheet-token', VP_SPREADSHEET_TOKEN, '--as', 'bot'],
             capture_output=True, text=True, timeout=30
         )
-        meta = json.loads(result.stdout).get('data', {})
-    if meta and 'sheets' in meta and len(meta['sheets']) > 0:
-        VP_SHEET_ID = meta['sheets'][0]['sheetId']
-        print(f'📋 版本计划 sheet_id: {VP_SHEET_ID}')
+        stdout = result.stdout.strip()
+        json_start = stdout.find('{')
+        if json_start >= 0:
+            stdout = stdout[json_start:]
+        meta = json.loads(stdout).get('data', {})
+    if meta and 'sheets' in meta:
+        sheets_list = meta['sheets']
+        if isinstance(sheets_list, dict) and 'sheets' in sheets_list:
+            sheets_list = sheets_list['sheets']
+        if isinstance(sheets_list, list) and len(sheets_list) > 0:
+            VP_SHEET_ID = sheets_list[0].get('sheetId') or sheets_list[0].get('sheet_id')
+            print(f'📋 版本计划 sheet_id (动态): {VP_SHEET_ID}')
     if not VP_SHEET_ID:
-        VP_SHEET_ID = 'default'
-        print(f'⚠️ 无法获取版本计划 sheet_id，使用 default')
+        VP_SHEET_ID = VP_KNOWN_SHEET_ID
+        print(f'⚠️ 动态获取失败，使用已知 sheet_id: {VP_SHEET_ID}')
     if FEISHU_APP_ID:
         vp_values = _feishu_read_sheet(VP_SPREADSHEET_TOKEN, VP_SHEET_ID)
     else:
@@ -700,41 +733,51 @@ try:
         
         for i, h in enumerate(headers):
             h_lower = h.lower()
-            if '日期' in h or 'date' in h_lower:
+            if '日期' in h or '时间' in h or 'date' in h_lower:
                 date_idx = i
-            elif '版本' in h or 'version' in h_lower:
+            elif '版本' in h or 'version' in h_lower or '标题' in h:
                 version_idx = i
             elif '内容' in h or '概述' in h or 'overview' in h_lower or '说明' in h:
                 content_idx = i
             elif '链接' in h or 'link' in h_lower or '文档' in h:
                 link_idx = i
-        
+
         print(f'   列索引: 日期={date_idx}, 版本={version_idx}, 内容={content_idx}, 链接={link_idx}')
-        
+
         plans = []
         for row in vp_values[1:]:
             if not row or not any(row):
                 continue
-            
+
             # 解析日期
             date_val = ""
             if date_idx is not None and len(row) > date_idx and row[date_idx]:
                 date_val = _excel_serial_to_date_str(row[date_idx])
-            
+
             # 解析版本号
             version_name = ""
             if version_idx is not None and len(row) > version_idx and row[version_idx]:
                 version_name = str(row[version_idx]).strip()
-            
+
             # 解析内容
             overview = ""
             if content_idx is not None and len(row) > content_idx and row[content_idx]:
                 overview = str(row[content_idx]).strip()
-            
-            # 解析链接
+
+            # 解析链接（飞书可能返回超链接对象 [{link, text, type}] 或普通字符串）
             doc_link = ""
             if link_idx is not None and len(row) > link_idx and row[link_idx]:
-                doc_link = str(row[link_idx]).strip()
+                link_val = row[link_idx]
+                if isinstance(link_val, list) and len(link_val) > 0:
+                    first = link_val[0]
+                    if isinstance(first, dict):
+                        doc_link = first.get('link', '') or first.get('text', '')
+                    else:
+                        doc_link = str(first).strip()
+                elif isinstance(link_val, dict):
+                    doc_link = link_val.get('link', '') or link_val.get('text', '')
+                else:
+                    doc_link = str(link_val).strip()
             
             if version_name:
                 plans.append({
@@ -854,7 +897,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",san
 .pp-row:last-child { border-bottom:none; }
 .pp-name { width:100px; font-size:12px; font-weight:600; flex-shrink:0; }
 .pp-bars { flex:1; display:flex; flex-direction:column; gap:4px; }
-.pp-bar-line { display:flex; align-items:center; height:16px; }
+.pp-bar-line { display:flex; align-items:center; height:16px; width:100%; }
 .pp-bar-segment { height:100%; transition:width 0.3s; }
 .pp-bar-solved { background:var(--green); }
 .pp-bar-open { background:var(--red); }
