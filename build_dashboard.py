@@ -1194,11 +1194,13 @@ function renderHR() {
   var deptGroups = {};
   PERSON_STATS.forEach(function(p) {
     var dept = personDeptMap[p.name] || "未知";
+    // 只显示 AIoT 部门的人员
+    if (dept !== 'AIoT' && dept !== 'AIOT') return;
     if (!deptGroups[dept]) deptGroups[dept] = [];
     deptGroups[dept].push(p);
   });
   var sections = '<div class="chart-title" style="margin-bottom:20px">人力资源</div>';
-  var deptOrder = ['AIOT','整机','其他','未知'];
+  var deptOrder = ['AIOT','AIoT'];
   var allPersons = [];
   deptOrder.forEach(function(dept) {
     if (!deptGroups[dept]) return;
@@ -1435,6 +1437,7 @@ var tlViewStart = null; // 当前可视窗口起始日
 var tlDayWidth = 64;    // 每天像素宽度
 var tlDataStart = null; // 数据最早日期
 var tlDataEnd = null;   // 数据最晚日期
+var tlRenderStart = null; // 渲染起始日期
 
 function renderTimeline() {
   var viewport = document.getElementById('tlViewport');
@@ -1484,11 +1487,12 @@ function _renderTimelineInner(viewport, projects) {
   var defaultViewEnd = new Date(today); defaultViewEnd.setDate(defaultViewEnd.getDate() + 12);
   if (renderStart > tlViewStart) renderStart = new Date(tlViewStart);
   if (renderEnd < defaultViewEnd) renderEnd = new Date(defaultViewEnd);
-  // 限制最大渲染范围180天，防止DOM节点过多导致卡顿
-  var maxDays = 180;
+  // 限制最大渲染范围365天，防止DOM节点过多导致卡顿
+  var maxDays = 365;
   if (Math.ceil((renderEnd - renderStart) / 86400000) > maxDays) {
     renderEnd = new Date(renderStart); renderEnd.setDate(renderEnd.getDate() + maxDays);
   }
+  tlRenderStart = renderStart; // 保存为全局变量
 
   var totalDays = Math.ceil((renderEnd - renderStart) / 86400000);
   var innerWidth = totalDays * tlDayWidth;
@@ -1671,6 +1675,19 @@ function resetTimeline() {
   tlViewStart = new Date(today);
   tlViewStart.setDate(tlViewStart.getDate() - 3);
   renderTimeline();
+  // 滚动到今天的位置
+  setTimeout(function() {
+    var scrollArea = document.getElementById('tlScrollArea');
+    if (scrollArea && tlRenderStart) {
+      var todayOffset = Math.round((today - tlRenderStart) / 86400000);
+      var todayPx = todayOffset * tlDayWidth;
+      var viewWidth = 15 * tlDayWidth;
+      var targetLeft = todayPx - viewWidth / 2;
+      var maxScroll = scrollArea.scrollWidth - viewWidth;
+      targetLeft = Math.max(0, Math.min(targetLeft, maxScroll));
+      scrollArea.scrollTo({ left: targetLeft, behavior: 'smooth' });
+    }
+  }, 100);
 }
 
 renderNav();
