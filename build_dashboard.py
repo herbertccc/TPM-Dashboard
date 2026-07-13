@@ -1095,7 +1095,7 @@ function renderHR() {
     return roleOrder[role] !== undefined ? roleOrder[role] : 99;
   }
 
-  // 按部门分组，部门内按角色排序
+  // 按部门分组，部门内按OPEN DI降序排序，同DI值再按角色和姓名排序
   var deptGroups = {};
   PERSON_STATS.forEach(function(p) {
     var dept = personDeptMap[p.name] || "未知";
@@ -1108,8 +1108,10 @@ function renderHR() {
   deptOrder.forEach(function(dept) {
     if (!deptGroups[dept]) return;
     var list = deptGroups[dept];
-    // 按角色排序（AIoT开发→软件测试→Other）
+    // 按OPEN DI降序排序，同DI值再按角色和姓名排序
     list.sort(function(a, b) {
+      var diDiff = (b.total_solved_di + b.total_unsolved_di) - (a.total_solved_di + a.total_unsolved_di);
+      if (diDiff !== 0) return diDiff;
       var ra = roleSortKey(personRoleMap[a.name]);
       var rb = roleSortKey(personRoleMap[b.name]);
       if (ra !== rb) return ra - rb;
@@ -1154,35 +1156,88 @@ function renderHR() {
       '</tr></thead><tbody>' + tableRows + '</tbody></table></div>';
   });
 
-  // DI效能分析图 - 已解决DI + 未解决DI
+  // 资源分布图 - 按项目分色的已解决DI + 未解决DI
+  // 收集每个人在各项目的DI数据
+  var personProjectDi = {};
+  PROJECT_NAMES.forEach(function(pn) {
+    PROJECTS_DATA[pn].bugs.forEach(function(b) {
+      if (b.assignee) {
+        if (!personProjectDi[b.assignee]) {
+          personProjectDi[b.assignee] = { solved: {}, unsolved: {} };
+        }
+        var di = b.openDI || 0;
+        if (b.status === "已关闭" || b.status === "已解决") {
+          personProjectDi[b.assignee].solved[pn] = (personProjectDi[b.assignee].solved[pn] || 0) + di;
+        } else {
+          personProjectDi[b.assignee].unsolved[pn] = (personProjectDi[b.assignee].unsolved[pn] || 0) + di;
+        }
+      }
+    });
+  });
+
   var maxDi = 0;
   allPersons.forEach(function(p) {
     maxDi = Math.max(maxDi, p.total_solved_di + p.total_unsolved_di);
   });
   if (maxDi === 0) maxDi = 1;
 
+  // 为每个项目分配颜色
+  var projectColors = {};
+  var colors = ['#165dff', '#00b42a', '#ff7d00', '#f53f3f', '#722ed1', '#faad14', '#13c2c2', '#eb2f96'];
+  PROJECT_NAMES.forEach(function(pn, idx) {
+    projectColors[pn] = colors[idx % colors.length];
+  });
+
   var chartRows = '';
   allPersons.forEach(function(p) {
-    var sw = (p.total_solved_di / maxDi * 100).toFixed(1);
-    var uw = (p.total_unsolved_di / maxDi * 100).toFixed(1);
-    var showSolvedVal = parseFloat(sw) > 5;
-    var showUnsolvedVal = parseFloat(uw) > 5;
+    var pData = personProjectDi[p.name] || { solved: {}, unsolved: {} };
+    
+    // 计算总宽度
+    var totalDi = p.total_solved_di + p.total_unsolved_di;
+    var segments = '';
+    var currentPos = 0;
+    
+    // 先渲染已解决的DI（按项目）
+    PROJECT_NAMES.forEach(function(pn) {
+      var solvedDi = pData.solved[pn] || 0;
+      if (solvedDi > 0) {
+        var width = (solvedDi / maxDi * 100).toFixed(1);
+        var showVal = parseFloat(width) > 5;
+        segments += '<div class="pp-bar-segment" style="width:' + width + '%;background:' + projectColors[pn] + '">' +
+          (showVal ? '<span class="pp-bar-value">' + solvedDi.toFixed(1) + '</span>' : '') +
+        '</div>';
+      }
+    });
+    
+    // 再渲染未解决的DI（按项目）
+    PROJECT_NAMES.forEach(function(pn) {
+      var unsolvedDi = pData.unsolved[pn] || 0;
+      if (unsolvedDi > 0) {
+        var width = (unsolvedDi / maxDi * 100).toFixed(1);
+        var showVal = parseFloat(width) > 5;
+        segments += '<div class="pp-bar-segment" style="width:' + width + '%;background:' + projectColors[pn] + ';opacity:0.6">' +
+          (showVal ? '<span class="pp-bar-value">' + unsolvedDi.toFixed(1) + '</span>' : '') +
+        '</div>';
+      }
+    });
+    
     chartRows += '<div class="pp-row">' +
       '<div class="pp-name">' + p.name + '</div>' +
       '<div style="flex:1;display:flex;align-items:center">' +
         '<div style="flex:1">' +
           '<div class="pp-bar-line" style="position:relative">' +
-            '<div class="pp-bar-segment pp-bar-solved" style="width:' + sw + '%">' +
-              (showSolvedVal ? '<span class="pp-bar-value">' + p.total_solved_di.toFixed(1) + '</span>' : '') +
-            '</div>' +
-            '<div class="pp-bar-segment pp-bar-open" style="width:' + uw + '%">' +
-              (showUnsolvedVal ? '<span class="pp-bar-value">' + p.total_unsolved_di.toFixed(1) + '</span>' : '') +
-            '</div>' +
+            segments +
           '</div>' +
         '</div>' +
         '<div class="pp-bar-sla">SLA超时:' + p.total_sla + '</div>' +
       '</div>' +
     '</div>';
+  });
+
+  // 构建图例
+  var legendItems = '';
+  PROJECT_NAMES.forEach(function(pn) {
+    legendItems += '<span><i style="background:' + projectColors[pn] + '"></i>' + pn + '</span>';
   });
 
   // 重开次数独立柱状图 - 按次数倒序排列
@@ -1207,15 +1262,15 @@ function renderHR() {
 
   var reopenChart = '';
   if (reopenPersons.length > 0) {
-    reopenChart = '<div class="pp-chart"><div class="chart-title">重开次数统计</div>' +
+    reopenChart = '<div class="pp-chart"><div class="chart-title">代码质量</div>' +
       '<div class="pp-legend"><span><i style="background:var(--orange)"></i>重开次数</span></div>' +
       reopenRows + '</div>';
   }
 
   return '<div class="page-header"><div class="page-title">人力资源</div><div class="page-desc">人员效能与项目投入分析</div></div>' +
     sections +
-    '<div class="pp-chart"><div class="chart-title">人员DI效能分布</div>' +
-    '<div class="pp-legend"><span><i style="background:var(--green)"></i>已解决DI</span><span><i style="background:var(--red)"></i>未解决DI</span></div>' +
+    '<div class="pp-chart"><div class="chart-title">资源分布</div>' +
+    '<div class="pp-legend">' + legendItems + '</div>' +
     chartRows + '</div>' +
     reopenChart;
 }
