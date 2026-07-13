@@ -1219,21 +1219,21 @@ function renderHR() {
       allPersons.push(p);
       var sr = p.total_tickets > 0 ? (p.solved_tickets / p.total_tickets * 100).toFixed(1) : '0.0';
       var srVal = parseFloat(sr);
-      var srColor = srVal >= 90 ? '#00b42a' : srVal >= 75 ? '#ff7d00' : '#f53f3f';
-      var srBg = srVal >= 90 ? '#e8ffea' : srVal >= 75 ? '#fff7e6' : '#fff2f0';
+      // 解决率颜色：100%黑色，<100%红色
+      var srTextColor = srVal >= 100 ? 'var(--text)' : 'var(--red)';
       var slaAvg = p.sla_days_count > 0 ? (p.sla_days_sum / p.sla_days_count).toFixed(1) : '-';
-      var slaColor = p.total_sla > 0 ? '#ff7d00' : 'var(--text)';
-      var slaBg = p.total_sla > 0 ? '#fff7e6' : '#f2f3f5';
-      var reopenColor = p.total_reopen > 0 ? 'var(--orange)' : 'var(--text-secondary)';
-      var reopenBg = p.total_reopen > 0 ? '#fff7e6' : '#f2f3f5';
+      // SLA超时颜色：0黑色，>0红色
+      var slaTextColor = p.total_sla > 0 ? 'var(--red)' : 'var(--text)';
+      // 重开次数颜色：0黑色，>0红色
+      var reopenTextColor = p.total_reopen > 0 ? 'var(--red)' : 'var(--text)';
       var role = personRoleMap[p.name] || 'Other';
       tableRows += '<tr>' +
         '<td>' + p.name + '</td>' +
         '<td><span style="font-size:12px;color:var(--text-secondary)">' + role + '</span></td>' +
-        '<td><div class="hr-metric"><span class="hr-pill" style="background:' + srBg + ';color:' + srColor + '">' + sr + '%</span><span class="hr-metric-sub">' + p.solved_tickets + '/' + p.total_tickets + '</span></div></td>' +
+        '<td style="color:' + srTextColor + '">' + p.solved_tickets + '/' + p.total_tickets + '（' + sr + '%）</td>' +
         '<td><span style="font-weight:700;font-size:14px;color:var(--red)">' + p.total_open_di.toFixed(1) + '</span></td>' +
-        '<td><div class="hr-metric"><span class="hr-pill" style="background:' + slaBg + ';color:' + slaColor + '">' + p.total_sla + '</span>' + (p.sla_days_count > 0 ? '<span class="hr-metric-sub">均' + slaAvg + '天</span>' : '') + '</div></td>' +
-        '<td><span class="hr-pill" style="background:' + reopenBg + ';color:' + reopenColor + '">' + p.total_reopen + '</span></td>' +
+        '<td style="color:' + slaTextColor + '">' + p.total_sla + (p.sla_days_count > 0 ? '（均' + slaAvg + '天）' : '') + '</td>' +
+        '<td style="color:' + reopenTextColor + '">' + p.total_reopen + '</td>' +
         '</tr>';
     });
     sections += '<div class="hr-table-wrap">' +
@@ -1337,7 +1337,23 @@ function renderHR() {
     legendItems += '<span><i style="background:' + projectColors[pn] + '"></i>' + pn + '</span>';
   });
 
-  // 重开次数独立柱状图 - 按次数倒序排列
+  // 重开次数独立柱状图 - 按项目分色，与资源分布样式一致
+  // 收集每个人在各项目的重开次数
+  var personProjectReopen = {};
+  PROJECT_NAMES.forEach(function(pn) {
+    PROJECTS_DATA[pn].bugs.forEach(function(b) {
+      if (b.assignee) {
+        if (!personProjectReopen[b.assignee]) {
+          personProjectReopen[b.assignee] = {};
+        }
+        var reopen = b.reopen_count || 0;
+        if (reopen > 0) {
+          personProjectReopen[b.assignee][pn] = (personProjectReopen[b.assignee][pn] || 0) + reopen;
+        }
+      }
+    });
+  });
+
   var reopenPersons = allPersons.filter(function(p) { return p.total_reopen > 0; });
   reopenPersons.sort(function(a, b) { return b.total_reopen - a.total_reopen; });
   var maxReopen = reopenPersons.length > 0 ? reopenPersons[0].total_reopen : 1;
@@ -1345,14 +1361,30 @@ function renderHR() {
 
   var reopenRows = '';
   reopenPersons.forEach(function(p) {
-    var rw = (p.total_reopen / maxReopen * 100).toFixed(1);
+    var pData = personProjectReopen[p.name] || {};
+    var segments = '';
+    
+    // 按项目渲染重开次数段
+    PROJECT_NAMES.forEach(function(pn) {
+      var projReopen = pData[pn] || 0;
+      if (projReopen > 0) {
+        var width = (projReopen / maxReopen * 100).toFixed(1);
+        var showVal = parseFloat(width) > 3;
+        segments += '<div class="pp-bar-segment" style="width:' + width + '%;background:' + projectColors[pn] + '">' +
+          (showVal ? '<span class="pp-bar-value">' + projReopen + '</span>' : '') +
+        '</div>';
+      }
+    });
+    
     reopenRows += '<div class="pp-row">' +
       '<div class="pp-name">' + p.name + '</div>' +
-      '<div style="flex:1">' +
-        '<div class="pp-bar-line" style="position:relative">' +
-          '<div class="pp-reopen-bar" style="width:' + rw + '%"></div>' +
-          '<span style="position:absolute;left:calc(' + rw + '% + 6px);top:50%;transform:translateY(-50%);font-size:11px;color:var(--orange);font-weight:600">' + p.total_reopen + '</span>' +
+      '<div style="flex:1;display:flex;align-items:center">' +
+        '<div style="flex:1">' +
+          '<div class="pp-bar-line" style="position:relative">' +
+            segments +
+          '</div>' +
         '</div>' +
+        '<div class="pp-bar-sla">重开:' + p.total_reopen + '</div>' +
       '</div>' +
     '</div>';
   });
@@ -1360,7 +1392,7 @@ function renderHR() {
   var reopenChart = '';
   if (reopenPersons.length > 0) {
     reopenChart = '<div class="pp-chart"><div class="chart-title">代码质量</div>' +
-      '<div class="pp-legend"><span><i style="background:var(--orange)"></i>重开次数</span></div>' +
+      '<div class="pp-legend">' + legendItems + '</div>' +
       reopenRows + '</div>';
   }
 
