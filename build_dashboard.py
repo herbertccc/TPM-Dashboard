@@ -1,310 +1,160 @@
 #!/usr/bin/env python3
-"""项目管理汇报看板生成脚本 - 飞书版 v2 (trigger build)"""
-import os, json, re, subprocess, urllib.request, urllib.error
+"""项目管理汇报看板生成脚本 - 钉钉版（HTTP API）"""
+import os, json, re, time
+import urllib.request
+import urllib.parse
+import ssl
 from datetime import datetime, timedelta
 from collections import defaultdict
-import openpyxl
 
 # ===== 配置 =====
-FEISHU_APP_ID = os.environ.get('FEISHU_APP_ID', '')
-FEISHU_APP_SECRET = os.environ.get('FEISHU_APP_SECRET', '')
+DINGTALK_APP_KEY = os.environ.get('DINGTALK_APP_KEY', 'ding9exxqt1c7nhuub7v')
+DINGTALK_APP_SECRET = os.environ.get('DINGTALK_APP_SECRET', 'fUp2nEtIWIaCSdq55rwLdE9mY6bzqVb3wPcntsJendE4iaojVGvh8FsxsTSFSIKn')
+OPERATOR_ID = 'PRmQRCFpuKchRpqCviSdoiiwiEiE'
+API_BASE = 'https://api.dingtalk.com'
 
-FEISHU_DATA_FOLDER = 'TzdbfQ6exlY5C1dVRyucGp9nnee'
-FEISHU_DEFAULT_SHEET_ID = '5fb42d'
-
-FEISHU_MILESTONE_SHEET = {
-    'token': 'YyjLsmNSWhH2wdtT4fac41O0n8d', 'sheet_id': '6fb317',
-}
-
-# 硬编码备用项目列表（当飞书文件夹API返回不完整时使用）
-FALLBACK_PROJECT_CONFIG = {
-    'B30': {'token': 'MWhYscs5Phtt24tND10cBzptnVb'},
-    'WR 02 SE': {'token': 'Hy7PsePRBhyGW5tfLnGcJdEfnnb'},
-    'E1W': {'token': 'DyyRsEM82hDniLtmI2acZd9rnDf'},
-}
-
-# 排除的项目名（旧文件/重复项目）
-EXCLUDED_PROJECTS = {'WR'}
-
-# ===== 飞书数据读取 =====
-# 调试：输出当前模式
-print(f"🔧 FEISHU_APP_ID={'已设置' if FEISHU_APP_ID else '未设置（使用 lark-cli 模式）'}")
-
-def _feishu_get_token():
-    """获取飞书 tenant_access_token（GitHub Actions 云端模式）"""
-    url = 'https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal'
-    body = json.dumps({'app_id': FEISHU_APP_ID, 'app_secret': FEISHU_APP_SECRET}).encode('utf-8')
-    req = urllib.request.Request(url, data=body,
-        headers={'Content-Type': 'application/json; charset=utf-8'})
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())['tenant_access_token']
+DEFECT_NODE = 'P0MALyR8kNnB9yZliY70z99KJ3bzYmDO'
+DEFECT_DATA_SHEET = 'kgqie6hm'
+DEFECT_PERSON_SHEET = 'st-77d83270-86268'
+MILESTONE_NODE = '7dx2rn0Jboav95gYSZv0obP38MGjLRb3'
+MILESTONE_SHEET = 'kgqie6hm'
+VERSION_PLAN_NODE = 'ndMj49yWj2YdvBzXiRGxxNKeW3pmz5aA'
+VERSION_PLAN_SHEET = 'kgqie6hm'
 
 
-def _feishu_api_get(url_path):
-    """通用飞书 API GET 请求（云端模式）"""
-    token = _feishu_get_token()
-    url = f'https://open.feishu.cn/open-apis{url_path}'
-    req = urllib.request.Request(url, headers={'Authorization': f'Bearer {token}'})
-    try:
-        with urllib.request.urlopen(req) as resp:
-            result = json.loads(resp.read())
-        if result.get('code', 0) != 0:
-            print(f'   ❌ 飞书 API 错误: {result}')
-            return None
-        return result.get('data')
-    except urllib.error.HTTPError as e:
-        body = e.read().decode('utf-8')
-        print(f'   ❌ 飞书 API 错误 ({e.code}): {body}')
-        return None
+# ===== 钉钉开放平台 HTTP API 函数 =====
+_token_cache = {"token": None, "expires": 0}
+
+def _dingtalk_get_token():
+    """获取钉钉 accessToken（带缓存）"""
+    now = time.time()
+    if _token_cache["token"] and _token_cache["expires"] > now + 60:
+        return _token_cache["token"]
+    url = f"{API_BASE}/v1.0/oauth2/accessToken"
+    body = json.dumps({"appKey": DINGTALK_APP_KEY, "appSecret": DINGTALK_APP_SECRET}).encode()
+    req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    with urllib.request.urlopen(req, context=ctx, timeout=15) as resp:
+        data = json.loads(resp.read())
+    token = data.get("accessToken")
+    if not token:
+        raise RuntimeError(f"获取 accessToken 失败: {data}")
+    _token_cache["token"] = token
+    _token_cache["expires"] = now + data.get("expireIn", 7200)
+    print("  ✅ 获取 accessToken 成功")
+    return token
 
 
-def _feishu_list_folder_files(folder_token):
-    """列出飞书文件夹中的文件（云端模式），返回 [{name, token, type}, ...]"""
-    data = _feishu_api_get(f'/drive/v1/files?folder_token={folder_token}&page_size=50')
-    if not data or 'files' not in data:
-        return []
-    return data['files']
-
-
-def _feishu_get_first_sheet_id(spreadsheet_token):
-    """获取电子表格第一个工作表的 sheet_id（云端模式）"""
-    data = _feishu_api_get(f'/sheets/v2/spreadsheets/{spreadsheet_token}/metainfo')
-    if data and 'sheets' in data and len(data['sheets']) > 0:
-        return data['sheets'][0]['sheetId']
-    return FEISHU_DEFAULT_SHEET_ID
-
-
-def _lark_get_first_sheet_id(spreadsheet_token):
-    """获取电子表格第一个工作表的 sheet_id（本地 lark-cli 模式）"""
-    result = subprocess.run(
-        ['lark-cli', 'sheets', '+info', '--spreadsheet-token', spreadsheet_token, '--as', 'bot'],
-        capture_output=True, text=True, timeout=30
-    )
-    stdout = result.stdout.strip()
-    json_start = stdout.find('{')
-    if json_start >= 0:
-        stdout = stdout[json_start:]
-    try:
-        data = json.loads(stdout).get('data', {})
-    except json.JSONDecodeError:
-        return FEISHU_DEFAULT_SHEET_ID
-    if data and 'sheets' in data:
-        sheets_list = data['sheets']
-        if isinstance(sheets_list, dict) and 'sheets' in sheets_list:
-            sheets_list = sheets_list['sheets']
-        if isinstance(sheets_list, list) and len(sheets_list) > 0:
-            return sheets_list[0].get('sheetId') or sheets_list[0].get('sheet_id') or FEISHU_DEFAULT_SHEET_ID
-    return FEISHU_DEFAULT_SHEET_ID
-
-
-def _get_first_sheet_id(spreadsheet_token):
-    """获取第一个 sheet_id，自动选择云端或本地模式"""
-    if FEISHU_APP_ID:
-        return _feishu_get_first_sheet_id(spreadsheet_token)
-    else:
-        return _lark_get_first_sheet_id(spreadsheet_token)
-
-
-def _feishu_get_sheet_id_by_name(spreadsheet_token, sheet_name):
-    """根据名称获取 sheet_id，找不到返回 None"""
-    if FEISHU_APP_ID:
-        data = _feishu_api_get(f'/sheets/v2/spreadsheets/{spreadsheet_token}/metainfo')
-    else:
-        result = subprocess.run(
-            ['lark-cli', 'sheets', '+info', '--spreadsheet-token', spreadsheet_token, '--as', 'bot'],
-            capture_output=True, text=True, timeout=30
-        )
-        stdout = result.stdout.strip()
-        json_start = stdout.find('{')
-        if json_start >= 0:
-            stdout = stdout[json_start:]
+def _dingtalk_api_get(path, params=None, retries=5):
+    """通用 GET 请求，带重试"""
+    token = _dingtalk_get_token()
+    url = f"{API_BASE}{path}"
+    if params:
+        url += "?" + urllib.parse.urlencode(params)
+    headers = {
+        "x-acs-dingtalk-access-token": token,
+        "Content-Type": "application/json",
+    }
+    for attempt in range(retries):
         try:
-            data = json.loads(stdout).get('data', {})
-        except json.JSONDecodeError:
-            data = None
-    if data and 'sheets' in data:
-        sheets_list = data['sheets']
-        if isinstance(sheets_list, dict) and 'sheets' in sheets_list:
-            sheets_list = sheets_list['sheets']
-        if isinstance(sheets_list, list):
-            for s in sheets_list:
-                if s.get('title', '') == sheet_name:
-                    return s.get('sheetId') or s.get('sheet_id')
+            req = urllib.request.Request(url, headers=headers)
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            with urllib.request.urlopen(req, context=ctx, timeout=60) as resp:
+                raw = resp.read()
+                data = json.loads(raw)
+            return data
+        except urllib.error.HTTPError as e:
+            body = e.read().decode(errors='replace')
+            if "ServiceUnavailable" in body or e.code >= 500:
+                wait = min(3 * (attempt + 1), 15)
+                print(f"  ⏳ 服务端错误 {e.code}，等待{wait}s重试 {attempt+1}/{retries}...")
+                time.sleep(wait)
+                continue
+            print(f"  ❌ HTTP {e.code}: {body[:300]}")
+            raise
+        except Exception as e:
+            if attempt < retries - 1:
+                print(f"  ⏳ 请求异常: {e}，重试 {attempt+1}/{retries}...")
+                time.sleep(2 ** attempt)
+                continue
+            raise
     return None
 
 
-def _build_person_mapping(spreadsheet_token, sheet_id_func):
-    """读取人员映射表，构建 {姓名: {role, dept}} 查找字典"""
-    mapping = {}
-    map_sheet_id = sheet_id_func(spreadsheet_token, '人员映射表')
-    if not map_sheet_id:
-        return mapping
-    if FEISHU_APP_ID:
-        rows = _feishu_read_sheet(spreadsheet_token, map_sheet_id)
-    else:
-        rows = _lark_read_sheet(spreadsheet_token, map_sheet_id)
-    if not rows or len(rows) < 2:
-        return mapping
-    headers = [str(h).strip() if h else '' for h in rows[0]]
-    name_idx, role_idx, dept_idx = None, None, None
-    for i, h in enumerate(headers):
-        hl = h.lower()
-        if '姓名' in h or '名字' in h or '人员' in h or 'name' in hl:
-            name_idx = i
-        if '角色' in h or 'role' in hl:
-            role_idx = i
-        if '部门' in h or 'dept' in hl:
-            dept_idx = i
-    if name_idx is None:
-        name_idx = 0
-    if role_idx is None and len(headers) > 2:
-        role_idx = 2
-    if dept_idx is None and len(headers) > 3:
-        dept_idx = 3
-    for row in rows[1:]:
-        if not any(row):
-            continue
-        name = str(row[name_idx]).strip() if name_idx < len(row) and row[name_idx] else ''
-        if not name:
-            continue
-        role = str(row[role_idx]).strip() if role_idx is not None and role_idx < len(row) and row[role_idx] else ''
-        dept = str(row[dept_idx]).strip() if dept_idx is not None and dept_idx < len(row) and row[dept_idx] else ''
-        mapping[name] = {'role': role, 'dept': dept}
-    print(f'   📋 人员映射表: {len(mapping)}人 ({spreadsheet_token})')
-    return mapping
-
-
-def _feishu_read_sheet(spreadsheet_token, sheet_id):
-    """通过飞书 Open API 读取表格数据（GitHub Actions 云端模式）"""
-    data = _feishu_api_get(f'/sheets/v2/spreadsheets/{spreadsheet_token}/values/{sheet_id}%21A1:T200?valueRenderOption=FormattedValue')
-    if data and 'valueRange' in data:
-        values = data['valueRange'].get('values')
-        if values:
-            return values
-    print(f'   ⚠️ 表格 {spreadsheet_token} 无有效数据或已被删除，跳过')
+def _dingtalk_read_range(node, sheet_id, range_str):
+    """读取指定范围，返回 displayValues 二维数组"""
+    path = f"/v1.0/doc/workbooks/{node}/sheets/{sheet_id}/ranges/{range_str}"
+    data = _dingtalk_api_get(path, params={"operatorId": OPERATOR_ID})
+    if data and "displayValues" in data:
+        return data.get("displayValues", [])
     return None
 
 
-def _lark_read_sheet(spreadsheet_token, sheet_id):
-    """通过 lark-cli 读取表格数据（本地开发模式）"""
-    result = subprocess.run(
-        ['lark-cli', 'sheets', '+read', '--spreadsheet-token', spreadsheet_token,
-         '--sheet-id', sheet_id, '--range', 'A1:T200', '--as', 'bot',
-         '--value-render-option', 'FormattedValue'],
-        capture_output=True, text=True, timeout=30
-    )
-    stdout = result.stdout.strip()
-    json_start = stdout.find('{')
-    if json_start >= 0:
-        stdout = stdout[json_start:]
-    try:
-        data = json.loads(stdout)
-    except json.JSONDecodeError:
-        print(f'   ⚠️ 表格 {spreadsheet_token} 输出无法解析为 JSON，跳过')
-        return None
-    if data.get('data', {}).get('valueRange', {}).get('values'):
-        return data['data']['valueRange']['values']
-    print(f'   ⚠️ 表格 {spreadsheet_token} 无有效数据，跳过')
-    return None
+def _dingtalk_read_large_sheet(node, sheet_id, total_rows, col_start='A', col_end='L', chunk_size=1000):
+    """分块读取大型表格，返回 (headers, data_rows)
+    chunk_size=2500: 2500行 × 12列 = 30000 单元格，正好在 API 限制内
+    """
+    all_rows = []
+    for start in range(1, total_rows + 2, chunk_size):
+        end = min(start + chunk_size - 1, total_rows + 1)
+        range_str = f"{col_start}{start}:{col_end}{end}"
+        print(f"  📖 读取 {range_str}...")
+        chunk = _dingtalk_read_range(node, sheet_id, range_str)
+        if chunk:
+            all_rows.extend(chunk)
+            print(f"     ✅ {len(chunk)} 行")
+        else:
+            print(f"     ⚠️ 跳过 {range_str}")
+        time.sleep(1)  # 避免 API 限流
+    if not all_rows:
+        return [], []
+    headers = [str(h).strip() for h in all_rows[0]]
+    return headers, all_rows[1:]
 
 
-def _discover_projects():
-    """从飞书文件夹动态发现项目列表，返回 {项目名: {token, sheet_id}}"""
-    projects = {}
-    if FEISHU_APP_ID:
-        files = _feishu_list_folder_files(FEISHU_DATA_FOLDER)
-        for f in files:
-            if f.get('type') == 'sheet':
-                name = f['name']
-                token = f['token']
-                print(f'   📄 发现项目: {name} (token={token})')
-                sheet_id = _feishu_get_first_sheet_id(token)
-                projects[name] = {'token': token, 'sheet_id': sheet_id}
-
-        # 后备方案：如果文件夹列表为空（可能缺少 drive 权限），从环境变量读取
-        if not projects:
-            config_str = os.environ.get('FEISHU_PROJECT_CONFIG', '')
-            if config_str:
-                print('   📋 从 FEISHU_PROJECT_CONFIG 环境变量读取项目配置')
-                try:
-                    config = json.loads(config_str)
-                    for name, token in config.items():
-                        print(f'   📄 发现项目: {name} (token={token})')
-                        sheet_id = _feishu_get_first_sheet_id(token)
-                        projects[name] = {'token': token, 'sheet_id': sheet_id}
-                except json.JSONDecodeError:
-                    print(f'   ❌ FEISHU_PROJECT_CONFIG 格式错误: {config_str}')
-            else:
-                print('   ⚠️ 文件夹列表为空且未配置 FEISHU_PROJECT_CONFIG，请检查:')
-                print('      1) 飞书应用是否有 drive:drive:readonly 权限并已发布')
-                print('      2) 或在 GitHub Secrets 中设置 FEISHU_PROJECT_CONFIG')
-    else:
-        # 本地模式：使用 lark-cli
-        result = subprocess.run(
-            ['lark-cli', 'drive', 'files', 'list',
-             '--params', json.dumps({'folder_token': FEISHU_DATA_FOLDER}, separators=(',', ':')),
-             '--page-all', '--as', 'user', '--format', 'json'],
-            capture_output=True, text=True, timeout=30
-        )
-        try:
-            # lark-cli 可能输出进度行（如 "[page 1] fetching..."），提取 JSON 部分
-            stdout = result.stdout.strip()
-            json_start = stdout.find('{')
-            if json_start >= 0:
-                stdout = stdout[json_start:]
-            resp = json.loads(stdout)
-            for f in resp.get('data', {}).get('files', []):
-                if f.get('type') == 'sheet':
-                    name = f['name']
-                    token = f['token']
-                    print(f'   📄 发现项目: {name} (token={token})')
-                    # 本地模式：获取第一个 sheet_id
-                    sheet_id = _lark_get_first_sheet_id(token)
-                    projects[name] = {'token': token, 'sheet_id': sheet_id}
-        except (json.JSONDecodeError, KeyError):
-            print('   ⚠️ 无法解析文件夹列表，使用空项目列表')
-
-    # 后备方案：确保关键项目不丢失（动态发现可能因权限/缓存问题返回不完整结果）
-    for name, info in FALLBACK_PROJECT_CONFIG.items():
-        if name not in projects:
-            token = info['token']
-            print(f'   📄 补充关键项目: {name} (token={token})')
-            sheet_id = _get_first_sheet_id(token)
-            projects[name] = {'token': token, 'sheet_id': sheet_id}
-
-    # 排除旧文件/重复项目
-    for name in list(projects.keys()):
-        if name in EXCLUDED_PROJECTS:
-            print(f'   ⏭️ 排除项目: {name}')
-            del projects[name]
-
-    return projects
+def _networkdays(start_date, end_date):
+    """计算两个日期之间的工作日数（不含周末）"""
+    if start_date > end_date:
+        return 0
+    days = 0
+    current = start_date
+    while current <= end_date:
+        if current.weekday() < 5:  # 周一到周五
+            days += 1
+        current += timedelta(days=1)
+    return days
 
 
-print('📁 正在从飞书文件夹发现项目...')
-FEISHU_DATA_SHEETS = _discover_projects()
-PROJECT_NAMES = list(FEISHU_DATA_SHEETS.keys())
-print(f'📁 项目列表: {PROJECT_NAMES}')
+def _normalize_dept(raw):
+    """标准化部门名称"""
+    if not raw:
+        return ""
+    raw = raw.strip()
+    mapping = {
+        'AIoT部': 'AIOT',
+        'AIOT部': 'AIOT',
+        'aiot部': 'AIOT',
+        '其他': '其他',
+    }
+    return mapping.get(raw, raw.upper())
 
 
-def read_feishu_data(project_name):
-    """读取飞书项目数据，自动选择 API 或 CLI 模式"""
-    info = FEISHU_DATA_SHEETS[project_name]
-    if FEISHU_APP_ID:
-        values = _feishu_read_sheet(info['token'], info['sheet_id'])
-    else:
-        values = _lark_read_sheet(info['token'], info['sheet_id'])
-    return values
+def _normalize_role(raw):
+    """标准化角色名称"""
+    if not raw:
+        return ""
+    raw = raw.strip()
+    mapping = {
+        '开发': 'AIOT开发',
+        '测试': '软件测试',
+        '其他': 'Other',
+    }
+    return mapping.get(raw, raw)
 
-
-def read_feishu_milestone():
-    """读取飞书里程碑数据"""
-    info = FEISHU_MILESTONE_SHEET
-    if FEISHU_APP_ID:
-        values = _feishu_read_sheet(info['token'], info['sheet_id'])
-    else:
-        values = _lark_read_sheet(info['token'], info['sheet_id'])
-    return values
 
 def _excel_serial_to_date_str(val):
     """将飞书返回的 Excel 序列号日期转为 YYYY-MM-DD 字符串"""
@@ -367,161 +217,191 @@ def _excel_serial_to_date_str(val):
     except Exception:
         return ""
 
-print(f"📁 项目列表: {PROJECT_NAMES}")
 
 
-# ===== 数据读取 =====
-def read_project_bugs(rows, person_mapping=None):
-    """从行数据读取任务数据（接受飞书 API 返回的二维数组 + 人员映射表）"""
-    if not rows:
-        return []
-    
-    headers = [str(h).strip() if h else '' for h in rows[0]]
-    bugs = []
-    for row in rows[1:]:
-        if not any(row):
+
+
+# ===== 读取人员映射表 =====
+print("📖 读取人员映射表...")
+person_map_data = _dingtalk_read_range(DEFECT_NODE, DEFECT_PERSON_SHEET, "A1:D100")
+person_mapping = {}  # {姓名: {"role": ..., "dept": ...}}
+if person_map_data and len(person_map_data) > 1:
+    for row in person_map_data[1:]:  # 跳过表头
+        if not row or not row[0]:
             continue
-        record = {}
-        for i, h in enumerate(headers):
-            record[h] = row[i] if i < len(row) else None
-        
-        # 标准化字段名
-        bug = {
-            "title": str(record.get("标题", "")),
-            "id": str(record.get("任务ID", "")),
-            "assignee": str(record.get("执行者", "")),
-            "status": str(record.get("任务状态", "")),
-            "resolver": str(record.get("解决者", "")),
-            "release_ctrl": str(record.get("释放管控", "")),
-            "level": str(record.get("BUG等级", "")),
-            "creator": str(record.get("创建者", "")),
-            "reopen_count": int(record.get("重开次数", 0) or 0),
-            "db_role": str(record.get("DB-角色", "")).upper() if record.get("DB-角色") else "",
-            "db_dept": str(record.get("DB-部门", "")).upper() if record.get("DB-部门") else "",
-            "sla_timeout": 1 if record.get("DB-SLA超时") is not None and str(record.get("DB-SLA超时", "")).strip() not in ("", "None") else 0,
-            "sla_days": 0,  # DB-SLA超时的实际数值，用于计算平均超时天数
-            "_created_dt": None,
-            "_resolved_dt": None,
-        }
+        name = str(row[0]).strip()
+        role = str(row[2]).strip() if len(row) > 2 and row[2] else ""
+        dept = str(row[3]).strip() if len(row) > 3 and row[3] else ""
+        if name:
+            person_mapping[name] = {"role": role, "dept": dept}
+    print(f"  ✅ 人员映射: {len(person_mapping)} 人")
+else:
+    print("  ⚠️ 无法读取人员映射表")
 
-        # 解析SLA超时天数
-        sla_raw = record.get("DB-SLA超时")
-        if sla_raw is not None and str(sla_raw).strip() not in ("", "None"):
-            try:
-                bug["sla_days"] = float(sla_raw)
-            except (ValueError, TypeError):
-                bug["sla_days"] = 0
 
-        # 解析时间
-        created = record.get("创建时间")
-        if isinstance(created, datetime):
-            bug["_created_dt"] = created
-        elif isinstance(created, (int, float)) and created > 0:
-            try:
-                bug["_created_dt"] = datetime(1899, 12, 30) + timedelta(days=int(created))
-            except:
-                pass
-        elif isinstance(created, str) and created:
-            try:
-                bug["_created_dt"] = datetime(1899, 12, 30) + timedelta(days=int(float(created)))
-            except (ValueError, TypeError):
-                try:
-                    normalized = created.replace('/', '-')
-                    date_part = normalized.split(' ')[0]  # 取日期部分
-                    bug["_created_dt"] = datetime.strptime(date_part, "%Y-%m-%d")
-                except:
-                    pass
+# ===== 读取缺陷列表数据（仅 A-L 列，避免公式列超时）=====
+print("📖 读取缺陷列表数据...")
+TOTAL_DATA_ROWS = 9500  # 略大于实际行数以确保覆盖
+headers, data_rows = _dingtalk_read_large_sheet(
+    DEFECT_NODE, DEFECT_DATA_SHEET, TOTAL_DATA_ROWS,
+    col_start='A', col_end='L', chunk_size=1000
+)
+print(f"  📊 读取完成: {len(data_rows)} 行数据, 列: {headers}")
 
-        resolved = record.get("解决时间")
-        if isinstance(resolved, datetime):
-            bug["_resolved_dt"] = resolved
-        elif isinstance(resolved, (int, float)) and resolved > 0:
-            try:
-                bug["_resolved_dt"] = datetime(1899, 12, 30) + timedelta(days=int(resolved))
-            except:
-                pass
-        elif isinstance(resolved, str) and resolved:
-            try:
-                bug["_resolved_dt"] = datetime(1899, 12, 30) + timedelta(days=int(float(resolved)))
-            except (ValueError, TypeError):
-                try:
-                    normalized = resolved.replace('/', '-')
-                    date_part = normalized.split(' ')[0]
-                    bug["_resolved_dt"] = datetime.strptime(date_part, "%Y-%m-%d")
-                except:
-                    pass
+# 建立列名到索引的映射
+col_idx = {h: i for i, h in enumerate(headers)}
 
-        # DI权重 - 从DB-DI值列直接读取
-        db_di_val = record.get("DB-DI值")
-        if db_di_val is not None:
-            try:
-                weight = float(db_di_val)
-            except (ValueError, TypeError):
-                weight = 0
+# ===== 解析 bug 数据（在 Python 中计算公式列）=====
+def parse_bugs_from_rows(data_rows, headers, person_mapping):
+    """从原始行数据解析 bug 列表，在 Python 中计算所有公式列"""
+    col = {h: i for i, h in enumerate(headers)}
+    bugs = []
+
+    for row in data_rows:
+        if not row or not any(row):
+            continue
+
+        def get(name, default=""):
+            idx = col.get(name)
+            if idx is not None and idx < len(row) and row[idx] is not None:
+                return row[idx]
+            return default
+
+        # 基础字段（来自 A-L 列）
+        project = str(get("DB-项目", "")).strip()
+        title = str(get("标题", "")).strip()
+        task_id = str(get("任务ID", "")).strip()
+        assignee = str(get("执行者", "")).strip()
+        status = str(get("任务状态", "")).strip()
+        resolver = str(get("解决者", "")).strip()
+        resolved_time_raw = str(get("解决时间", "")).strip()
+        bug_level = str(get("BUG等级", "")).strip()
+        created_time_raw = str(get("创建时间", "")).strip()
+        creator = str(get("创建者", "")).strip()
+        reopen_raw = get("重开次数", 0)
+        release_ctrl = str(get("释放管控", "")).strip()
+
+        try:
+            reopen_count = int(float(reopen_raw)) if reopen_raw else 0
+        except (ValueError, TypeError):
+            reopen_count = 0
+
+        # === 计算 DB-BUG等级 (列 O) ===
+        level_map = {"非常紧急": "P0", "P0": "P0", "紧急": "P1", "P1": "P1",
+                     "普通": "P2", "P2": "P2", "较低": "P3", "P3": "P3"}
+        db_bug_level = level_map.get(bug_level, "")
+
+        # === 计算 DB-DI值 (列 P) ===
+        di_map = {"P0": 10, "P1": 3, "P2": 1, "P3": 0.1}
+        weight = di_map.get(db_bug_level, 0)
+
+        # === 计算 DB-角色 和 DB-部门 (列 R, S) ===
+        person_info = person_mapping.get(assignee, {})
+        raw_role = person_info.get("role", "")
+        raw_dept = person_info.get("dept", "")
+        db_role = _normalize_role(raw_role)
+        db_dept = _normalize_dept(raw_dept)
+
+        # === 计算 DB-任务状态 (列 M) ===
+        if status in ("已关闭", "不予解决", "非问题关闭"):
+            db_task_status = "已关闭"
+        elif status in ("外部问题", "设计如此", "重复问题", "无法重现", "回归验证", "已解决"):
+            db_task_status = "待回归"
+        elif status in ("挂起", "重复打开", "修复中", "激活", "待处理", "重新打开"):
+            db_task_status = "待处理"
         else:
-            weight = 0
-        bug["rawWeight"] = weight  # 原始DI权重（不受状态影响）
+            db_task_status = status
 
-        # DI计算规则（基于DB-DI值列 + DB-部门过滤）
-        # OPEN DI: DB-部门=AIOT 且 任务状态≠已关闭
-        # 已解决DI: DB-部门=AIOT 且 任务状态=已解决或已关闭
-        # 未解决DI: DB-部门=AIOT 且 任务状态≠已解决且≠已关闭
-        # 解析 VLOOKUP 公式：如果 db_dept/db_role 是公式，用映射表解析
-        if person_mapping:
-            assignee = bug["assignee"]
-            if assignee in person_mapping:
-                m = person_mapping[assignee]
-                if "VLOOKUP" in str(bug["db_dept"]):
-                    bug["db_dept"] = m["dept"].upper()
-                if "VLOOKUP" in str(bug["db_role"]):
-                    bug["db_role"] = m["role"].upper()
-        is_aiot = bug["db_dept"] == "AIOT"
+        # === 解析日期 ===
+        def parse_datetime_str(s):
+            if not s or s in ("None", ""):
+                return None
+            try:
+                # 格式: "2025/6/24 17:28:00.0"
+                s = s.replace(".0", "").replace("/", "-")
+                date_part = s.split(" ")[0]
+                return datetime.strptime(date_part, "%Y-%m-%d")
+            except (ValueError, TypeError):
+                return None
+
+        created_dt = parse_datetime_str(created_time_raw)
+        resolved_dt = parse_datetime_str(resolved_time_raw)
+
+        # === 计算 DB-SLA超时 (列 Q) ===
+        sla_timeout = 0
+        sla_days = 0
+        if status not in ("已关闭", "已解决"):
+            if created_dt:
+                nd = _networkdays(created_dt, datetime.now())
+                thresholds = {"P0": 1, "P1": 3, "P2": 5, "P3": 8}
+                threshold = thresholds.get(db_bug_level, 999)
+                if nd > threshold:
+                    sla_timeout = 1
+                    sla_days = nd
+
+        # === 计算 解决超90天 (列 N) ===
+        resolve_over_90 = ""
+        if created_dt and (datetime.now() - created_dt).days > 90:
+            resolve_over_90 = "超90天"
+
+        # === DI 计算 ===
+        is_aiot = (db_dept == "AIOT")
         if is_aiot:
-            status = bug["status"]
             if status in ("已关闭", "已完成"):
-                bug["openDI"] = 0
-                bug["solvedDI"] = 0
-                bug["unsolvedDI"] = 0
+                open_di = solved_di = unsolved_di = 0
             elif status == "已解决":
-                bug["openDI"] = weight
-                bug["solvedDI"] = weight
-                bug["unsolvedDI"] = 0
+                open_di = weight
+                solved_di = weight
+                unsolved_di = 0
             else:
-                bug["openDI"] = weight
-                bug["solvedDI"] = 0
-                bug["unsolvedDI"] = weight
+                open_di = weight
+                solved_di = 0
+                unsolved_di = weight
         else:
-            bug["openDI"] = 0
-            bug["solvedDI"] = 0
-            bug["unsolvedDI"] = 0
-        
-        # 过滤规则：解决超90天=超90天 且 已关闭 且 创建时间距今超90天 → 忽略
-        resolve_over_90 = str(record.get("解决超90天", "")).strip()
-        if resolve_over_90 == "超90天" and bug["status"] == "已关闭":
-            if bug["_created_dt"] and (datetime.now() - bug["_created_dt"]).days > 90:
+            open_di = solved_di = unsolved_di = 0
+
+        # === 过滤规则：解决超90天 ===
+        if resolve_over_90 == "超90天" and status == "已关闭":
+            if created_dt and (datetime.now() - created_dt).days > 90:
                 continue
-        
-        bugs.append(bug)
-    
+
+        bugs.append({
+            "project": project,
+            "title": title,
+            "id": task_id,
+            "assignee": assignee,
+            "status": status,
+            "resolver": resolver,
+            "release_ctrl": release_ctrl,
+            "level": bug_level,
+            "creator": creator,
+            "reopen_count": reopen_count,
+            "db_role": db_role,
+            "db_dept": db_dept,
+            "sla_timeout": sla_timeout,
+            "sla_days": sla_days,
+            "rawWeight": weight,
+            "openDI": open_di,
+            "solvedDI": solved_di,
+            "unsolvedDI": unsolved_di,
+            "_created_dt": created_dt,
+            "_resolved_dt": resolved_dt,
+        })
+
     return bugs
 
 
-# 读取所有项目数据
+all_bugs_raw = parse_bugs_from_rows(data_rows, headers, person_mapping)
+print(f"🐛 解析完成: {len(all_bugs_raw)} 条有效 bug")
+
+# 按项目分组
+PROJECT_NAMES = sorted(set(b["project"] for b in all_bugs_raw if b["project"]))
 all_projects_bugs = {}
-PERSON_MAPPINGS = {}  # {项目名: {姓名: {role, dept}}}
 for pn in PROJECT_NAMES:
-    info = FEISHU_DATA_SHEETS[pn]
-    PERSON_MAPPINGS[pn] = _build_person_mapping(info['token'], _feishu_get_sheet_id_by_name)
-    rows = read_feishu_data(pn)
-    if rows is None:
-        print(f"   ⚠️ {pn}: 无法读取数据，跳过")
-        all_projects_bugs[pn] = []
-    else:
-        all_projects_bugs[pn] = read_project_bugs(rows, PERSON_MAPPINGS.get(pn, {}))
+    all_projects_bugs[pn] = [b for b in all_bugs_raw if b["project"] == pn]
     print(f"   {pn}: {len(all_projects_bugs[pn])} 条任务")
-    # DEBUG: 输出样本数据
 
-
+print(f"📁 共 {len(PROJECT_NAMES)} 个项目: {PROJECT_NAMES}")
 
 # ===== 统计计算 =====
 def calc_stats(bugs):
@@ -701,12 +581,14 @@ def calc_person_stats(PROJECT_NAMES, all_projects_bugs):
 person_project_stats = calc_person_stats(PROJECT_NAMES, all_projects_bugs)
 
 
-# 读取里程碑数据（从飞书在线表格，项目列有合并单元格）
+
+
+
+# ===== 读取里程碑数据（从钉钉在线表格，项目列有合并单元格）=====
+print("📅 读取里程碑数据...")
 milestones = {}
-ms_vals = read_feishu_milestone()
+ms_vals = _dingtalk_read_range(MILESTONE_NODE, MILESTONE_SHEET, "A1:F200")
 if ms_vals and len(ms_vals) > 1:
-    headers = [str(h).strip() if h else '' for h in ms_vals[0]]
-    # 处理合并单元格：项目列空值时沿用上一行的值
     last_project = ""
     for row in ms_vals[1:]:
         if not row or not any(row):
@@ -718,7 +600,6 @@ if ms_vals and len(ms_vals) > 1:
             project_name = last_project
         if not project_name:
             continue
-
         date_val = _excel_serial_to_date_str(row[1]) if len(row) > 1 and row[1] else ""
         ms_entry = {
             "date": date_val,
@@ -731,54 +612,25 @@ if ms_vals and len(ms_vals) > 1:
             milestones[project_name] = []
         milestones[project_name].append(ms_entry)
     print(f"📅 里程碑数据: {len(milestones)} 个项目")
+else:
+    print("⚠️ 无法读取里程碑数据")
 
 
-# 读取版本计划数据 - 从飞书表格读取
+# ===== 读取版本计划数据 - 从钉钉表格读取 =====
+print("📋 读取版本计划数据...")
 version_plan = []
-VP_SPREADSHEET_TOKEN = 'ApFaswCTXhnKbitbTnrcL0tinCe'
-VP_SHEET_ID = None  # 动态获取第一个工作表的 sheet_id
-VP_KNOWN_SHEET_ID = '716005'  # 已知版本计划 sheet_id（后备）
-
 try:
-    # 获取版本计划表的实际 sheet_id
-    if FEISHU_APP_ID:
-        meta = _feishu_api_get(f'/sheets/v2/spreadsheets/{VP_SPREADSHEET_TOKEN}/metainfo')
-    else:
-        result = subprocess.run(
-            ['lark-cli', 'sheets', '+info', '--spreadsheet-token', VP_SPREADSHEET_TOKEN, '--as', 'bot'],
-            capture_output=True, text=True, timeout=30
-        )
-        stdout = result.stdout.strip()
-        json_start = stdout.find('{')
-        if json_start >= 0:
-            stdout = stdout[json_start:]
-        meta = json.loads(stdout).get('data', {})
-    if meta and 'sheets' in meta:
-        sheets_list = meta['sheets']
-        if isinstance(sheets_list, dict) and 'sheets' in sheets_list:
-            sheets_list = sheets_list['sheets']
-        if isinstance(sheets_list, list) and len(sheets_list) > 0:
-            VP_SHEET_ID = sheets_list[0].get('sheetId') or sheets_list[0].get('sheet_id')
-            print(f'📋 版本计划 sheet_id (动态): {VP_SHEET_ID}')
-    if not VP_SHEET_ID:
-        VP_SHEET_ID = VP_KNOWN_SHEET_ID
-        print(f'⚠️ 动态获取失败，使用已知 sheet_id: {VP_SHEET_ID}')
-    if FEISHU_APP_ID:
-        vp_values = _feishu_read_sheet(VP_SPREADSHEET_TOKEN, VP_SHEET_ID)
-    else:
-        vp_values = _lark_read_sheet(VP_SPREADSHEET_TOKEN, VP_SHEET_ID)
-    
-    if vp_values and len(vp_values) > 1:
-        headers = [str(h).strip() if h else '' for h in vp_values[0]]
-        print(f'📋 版本计划表头: {headers}')
-        
-        # 找到各列的索引
+    vp_vals = _dingtalk_read_range(VERSION_PLAN_NODE, VERSION_PLAN_SHEET, "A1:E20")
+    if vp_vals and len(vp_vals) > 1:
+        vp_headers = [str(h).strip() if h else '' for h in vp_vals[0]]
+        print(f'📋 版本计划表头: {vp_headers}')
+
         date_idx = None
         version_idx = None
         content_idx = None
         link_idx = None
-        
-        for i, h in enumerate(headers):
+
+        for i, h in enumerate(vp_headers):
             h_lower = h.lower()
             if '日期' in h or '时间' in h or 'date' in h_lower:
                 date_idx = i
@@ -792,26 +644,22 @@ try:
         print(f'   列索引: 日期={date_idx}, 版本={version_idx}, 内容={content_idx}, 链接={link_idx}')
 
         plans = []
-        for row in vp_values[1:]:
+        for row in vp_vals[1:]:
             if not row or not any(row):
                 continue
 
-            # 解析日期
             date_val = ""
             if date_idx is not None and len(row) > date_idx and row[date_idx]:
                 date_val = _excel_serial_to_date_str(row[date_idx])
 
-            # 解析版本号
             version_name = ""
             if version_idx is not None and len(row) > version_idx and row[version_idx]:
                 version_name = str(row[version_idx]).strip()
 
-            # 解析内容
             overview = ""
             if content_idx is not None and len(row) > content_idx and row[content_idx]:
                 overview = str(row[content_idx]).strip()
 
-            # 解析链接（飞书可能返回超链接对象 [{link, text, type}] 或普通字符串）
             doc_link = ""
             if link_idx is not None and len(row) > link_idx and row[link_idx]:
                 link_val = row[link_idx]
@@ -825,7 +673,7 @@ try:
                     doc_link = link_val.get('link', '') or link_val.get('text', '')
                 else:
                     doc_link = str(link_val).strip()
-            
+
             if version_name:
                 plans.append({
                     "date": date_val,
@@ -833,19 +681,20 @@ try:
                     "overview": overview,
                     "link": doc_link,
                 })
-        
-        # 按日期倒序排列（有日期的排在前面，日期大的在前）
+
         def parse_date_for_sort(p):
             if p["date"]:
                 try:
                     return datetime.strptime(p["date"], "%Y-%m-%d")
                 except:
                     pass
-            return datetime.min  # 无日期的排最后
-        
+            return datetime.min
+
         plans.sort(key=parse_date_for_sort, reverse=True)
         version_plan = plans
         print(f'📋 版本计划: {len(version_plan)} 条')
+    else:
+        print("⚠️ 无法读取版本计划数据")
 except Exception as e:
     print(f'⚠️ 读取版本计划失败: {e}')
     version_plan = []
