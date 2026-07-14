@@ -33,6 +33,7 @@ jobs:
         env:
           DINGTALK_APP_KEY: ${{ secrets.DINGTALK_APP_KEY }}
           DINGTALK_APP_SECRET: ${{ secrets.DINGTALK_APP_SECRET }}
+          DINGTALK_OPERATOR_ID: ${{ secrets.DINGTALK_OPERATOR_ID }}
         run: |
           python build_dashboard.py
           head -5 index.html

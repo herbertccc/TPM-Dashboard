@@ -20,6 +20,7 @@ DATA_DIR = 'data'
 DINGTALK_APP_KEY = os.environ.get('DINGTALK_APP_KEY', '')
 DINGTALK_APP_SECRET = os.environ.get('DINGTALK_APP_SECRET', '')
 DINGTALK_NODE_ID = 'P0MALyR8kNnB9yZliY70z99KJ3bzYmDO'
+DINGTALK_OPERATOR_ID = os.environ.get('DINGTALK_OPERATOR_ID', '')
 TREND_DAYS = 30
 
 SSL_CTX = ssl.create_default_context()
@@ -49,60 +50,184 @@ def dingtalk_get_token():
         raise Exception('token failed: ' + str(data))
 
 
-def dingtalk_get_doc_info(access_token):
-    # Try multiple API endpoints
-    endpoints = [
-        'https://api.dingtalk.com/v1.0/doc/workspaces/nodes/' + DINGTALK_NODE_ID,
-        'https://api.dingtalk.com/v2.0/storage/spaces/files/' + DINGTALK_NODE_ID,
-    ]
-    headers = {'x-acs-dingtalk-access-token': access_token}
-    for url in endpoints:
+def _api_get(url, token, timeout=15):
+    headers = {'x-acs-dingtalk-access-token': token}
+    req = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(req, timeout=timeout, context=SSL_CTX) as resp:
+        return json.loads(resp.read().decode('utf-8'))
+
+
+def _api_post(url, token, body, timeout=30):
+    headers = {
+        'x-acs-dingtalk-access-token': token,
+        'Content-Type': 'application/json'
+    }
+    data = json.dumps(body).encode('utf-8') if body else None
+    req = urllib.request.Request(url, data=data, headers=headers, method='POST')
+    with urllib.request.urlopen(req, timeout=timeout, context=SSL_CTX) as resp:
+        return json.loads(resp.read().decode('utf-8'))
+
+
+def dingtalk_get_node_info(access_token):
+    """Get knowledge base node info using multiple API strategies."""
+    oid = DINGTALK_OPERATOR_ID
+    # Strategy 1: Wiki API - GET /v2.0/wiki/nodes/{nodeId}
+    if oid:
         try:
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=15, context=SSL_CTX) as resp:
-                data = json.loads(resp.read().decode('utf-8'))
-                print('doc info from: ' + url)
-                return data
+            url = ('https://api.dingtalk.com/v2.0/wiki/nodes/'
+                   + DINGTALK_NODE_ID + '?operatorId=' + oid)
+            data = _api_get(url, access_token)
+            node = data.get('node', data)
+            print('wiki node ok, type=' + node.get('type', '?')
+                  + ', cat=' + node.get('category', '?'))
+            return node
         except Exception as e:
-            print('endpoint failed: ' + url.split('/')[-2] + '/' + url.split('/')[-1] + ' -> ' + str(e))
+            print('wiki nodes failed: ' + str(e))
+    # Strategy 2: Doc dentry API - GET /v2.0/doc/dentries/{uuid}/queryDentryId
+    if oid:
+        try:
+            url = ('https://api.dingtalk.com/v2.0/doc/dentries/'
+                   + DINGTALK_NODE_ID + '/queryDentryId?operatorId=' + oid)
+            data = _api_get(url, access_token)
+            print('dentry ok: spaceId=' + data.get('spaceId', '?')
+                  + ', dentryId=' + data.get('dentryId', '?'))
+            return data
+        except Exception as e:
+            print('dentry query failed: ' + str(e))
+    # Strategy 3: Drive spaces - GET /v1.0/drive/spaces/{spaceId}/files/{fileId}
+    try:
+        url = ('https://api.dingtalk.com/v1.0/drive/spaces/'
+               + DINGTALK_NODE_ID + '/files/' + DINGTALK_NODE_ID)
+        data = _api_get(url, access_token)
+        print('drive file ok')
+        return data
+    except Exception as e:
+        print('drive spaces failed: ' + str(e))
     return {}
 
 
-def dingtalk_download_file(access_token, doc_info):
-    doc_id = (doc_info.get('docId') or doc_info.get('id')
-              or doc_info.get('dentryUuid') or DINGTALK_NODE_ID)
-    # Try export API
-    endpoints = [
-        ('POST', 'https://api.dingtalk.com/v1.0/doc/documents/' + str(doc_id) + '/export',
-         json.dumps({'targetFormat': 'xlsx'}).encode('utf-8')),
-        ('POST', 'https://api.dingtalk.com/v1.0/doc/suites/documents/' + str(doc_id) + '/export',
-         json.dumps({'targetFormat': 'xlsx'}).encode('utf-8')),
-    ]
-    headers = {
-        'x-acs-dingtalk-access-token': access_token,
-        'Content-Type': 'application/json'
-    }
-    for method, url, body in endpoints:
+def dingtalk_read_sheet(access_token):
+    """Read spreadsheet data directly via Sheet API."""
+    oid = DINGTALK_OPERATOR_ID
+    if not oid:
+        print('no operatorId, skip sheet read')
+        return []
+    workbook_id = DINGTALK_NODE_ID
+    # Step 1: Get all sheets
+    try:
+        url = ('https://api.dingtalk.com/v1.0/doc/workbooks/'
+               + workbook_id + '/sheets?operatorId=' + oid)
+        data = _api_get(url, access_token)
+        sheets = data.get('value', data.get('sheets', []))
+        if not sheets:
+            print('no sheets found in workbook')
+            return []
+        sheet_id = sheets[0].get('id', sheets[0].get('sheetId', ''))
+        print('sheet found: ' + str(sheet_id) + ' (' + str(len(sheets)) + ' sheets)')
+    except Exception as e:
+        print('get sheets failed: ' + str(e))
+        return []
+    # Step 2: Read all data from first sheet
+    all_rows = []
+    next_token = None
+    for page in range(20):  # max 20 pages
         try:
-            req = urllib.request.Request(url, data=body, headers=headers, method=method)
-            with urllib.request.urlopen(req, timeout=30, context=SSL_CTX) as resp:
-                data = json.loads(resp.read().decode('utf-8'))
-                file_url = (data.get('result', {}).get('fileUrl')
-                            or data.get('fileUrl'))
-                if file_url:
-                    req2 = urllib.request.Request(file_url)
-                    with urllib.request.urlopen(req2, timeout=60, context=SSL_CTX) as r2:
-                        file_data = r2.read()
-                        os.makedirs(DATA_DIR, exist_ok=True)
-                        fp = os.path.join(DATA_DIR, 'dingtalk_data.xlsx')
-                        with open(fp, 'wb') as f:
-                            f.write(file_data)
-                        print('downloaded: ' + fp + ' (' + str(len(file_data)) + ' bytes)')
-                        return fp
-                print('no url in response: ' + json.dumps(data, ensure_ascii=False)[:200])
+            url = ('https://api.dingtalk.com/v1.0/doc/workbooks/'
+                   + workbook_id + '/sheets/' + str(sheet_id)
+                   + '/ranges/A1:ZZ5000?operatorId=' + oid)
+            if next_token:
+                url += '&nextToken=' + next_token
+            data = _api_get(url, access_token, timeout=30)
+            values = data.get('values', [])
+            if values:
+                all_rows.extend(values)
+            next_token = data.get('nextToken')
+            if not next_token:
+                break
         except Exception as e:
-            print('export failed: ' + str(e))
-    return None
+            if page == 0:
+                print('read range failed: ' + str(e))
+            break
+    if not all_rows:
+        print('no data in sheet')
+        return []
+    # Convert to dict rows
+    headers = [str(v).strip() if v else '' for v in all_rows[0]]
+    print('headers: ' + ', '.join(h for h in headers if h)[:200])
+    result = []
+    for row_vals in all_rows[1:]:
+        if not any(v is not None for v in row_vals):
+            continue
+        d = {}
+        for i, h in enumerate(headers):
+            if h and i < len(row_vals):
+                val = row_vals[i]
+                d[h] = str(val).strip() if val is not None else ''
+        if d:
+            result.append(d)
+    print('sheet rows: ' + str(len(result)))
+    return result
+
+
+def dingtalk_export_download(access_token):
+    """Export spreadsheet as xlsx and download."""
+    oid = DINGTALK_OPERATOR_ID
+    if not oid:
+        print('no operatorId, skip export')
+        return None
+    workbook_id = DINGTALK_NODE_ID
+    # Step 1: Submit export job
+    try:
+        url = ('https://api.dingtalk.com/v1.0/doc/workbooks/'
+               + workbook_id + '/export')
+        body = {'operatorId': oid, 'targetFormat': 'xlsx'}
+        data = _api_post(url, access_token, body)
+        task_id = data.get('taskId', '')
+        if not task_id:
+            print('no taskId in export response')
+            return None
+        print('export task: ' + task_id)
+    except Exception as e:
+        print('export submit failed: ' + str(e))
+        return None
+    # Step 2: Poll for completion
+    import time
+    file_url = None
+    for i in range(30):
+        try:
+            time.sleep(2)
+            url = ('https://api.dingtalk.com/v1.0/doc/workbooks/'
+                   + workbook_id + '/export/'
+                   + task_id + '?operatorId=' + oid)
+            data = _api_get(url, access_token)
+            status = data.get('status', '')
+            if status in ('completed', 'success', 'done'):
+                file_url = data.get('fileUrl', data.get('url', ''))
+                break
+            elif status in ('failed', 'error'):
+                print('export failed: ' + status)
+                return None
+            print('export status: ' + status + ' (waiting...)')
+        except Exception as e:
+            print('poll error: ' + str(e))
+            break
+    if not file_url:
+        print('export timeout or no file url')
+        return None
+    # Step 3: Download file
+    try:
+        req = urllib.request.Request(file_url)
+        with urllib.request.urlopen(req, timeout=60, context=SSL_CTX) as resp:
+            file_data = resp.read()
+            os.makedirs(DATA_DIR, exist_ok=True)
+            fp = os.path.join(DATA_DIR, 'dingtalk_data.xlsx')
+            with open(fp, 'wb') as f:
+                f.write(file_data)
+            print('downloaded: ' + fp + ' (' + str(len(file_data)) + ' bytes)')
+            return fp
+    except Exception as e:
+        print('download failed: ' + str(e))
+        return None
 
 
 def fetch_dingtalk_data():
@@ -110,19 +235,24 @@ def fetch_dingtalk_data():
         print('no dingtalk credentials, skip')
         return []
     print('--- fetch via DingTalk API ---')
+    if not DINGTALK_OPERATOR_ID:
+        print('WARNING: DINGTALK_OPERATOR_ID not set')
+        print('Please add it to GitHub Secrets (your DingTalk unionId)')
+        print('Get it: DingTalk Admin > Contacts > your profile > unionId')
+        return []
     try:
         token = dingtalk_get_token()
-        doc_info = dingtalk_get_doc_info(token)
-        if not doc_info:
-            print('doc info empty, skip')
-            return []
-        print('doc: ' + json.dumps(doc_info, ensure_ascii=False)[:300])
-        fp = dingtalk_download_file(token, doc_info)
+        # Try reading sheet directly first
+        rows = dingtalk_read_sheet(token)
+        if rows:
+            return rows
+        # Fallback: export as xlsx and download
+        print('--- trying export/download ---')
+        fp = dingtalk_export_download(token)
         if fp:
             return read_xlsx_rows(fp)
     except Exception as e:
         print('dingtalk API error: ' + str(e))
-    print('will try local data instead')
     return []
 
 
