@@ -20,7 +20,7 @@ DATA_DIR = 'data'
 DINGTALK_APP_KEY = os.environ.get('DINGTALK_APP_KEY', '')
 DINGTALK_APP_SECRET = os.environ.get('DINGTALK_APP_SECRET', '')
 DINGTALK_NODE_ID = 'P0MALyR8kNnB9yZliY70z99KJ3bzYmDO'
-DINGTALK_OPERATOR_ID = os.environ.get('DINGTALK_OPERATOR_ID', '')
+DINGTALK_OPERATOR_ID = os.environ.get('DINGTALK_OPERATOR_ID', 'PRmQRCFpuKchRpqCviSdoiiwiEiE')
 TREND_DAYS = 30
 
 SSL_CTX = ssl.create_default_context()
@@ -127,26 +127,26 @@ def dingtalk_read_sheet(access_token):
     except Exception as e:
         print('get sheets failed: ' + str(e))
         return []
-    # Step 2: Read all data from first sheet
+    # Step 2: Read data in chunks (sheet has 5000+ rows, 22 columns)
     all_rows = []
-    next_token = None
-    for page in range(20):  # max 20 pages
+    chunk_size = 1000
+    for start in range(1, 10000, chunk_size):
+        end = start + chunk_size - 1
         try:
             url = ('https://api.dingtalk.com/v1.0/doc/workbooks/'
                    + workbook_id + '/sheets/' + str(sheet_id)
-                   + '/ranges/A1:ZZ5000?operatorId=' + oid)
-            if next_token:
-                url += '&nextToken=' + next_token
+                   + '/ranges/A' + str(start) + ':V' + str(end)
+                   + '?operatorId=' + oid)
             data = _api_get(url, access_token, timeout=30)
             values = data.get('values', [])
-            if values:
-                all_rows.extend(values)
-            next_token = data.get('nextToken')
-            if not next_token:
+            if not values:
+                break
+            all_rows.extend(values)
+            print('read rows ' + str(start) + '-' + str(start + len(values) - 1))
+            if len(values) < chunk_size:
                 break
         except Exception as e:
-            if page == 0:
-                print('read range failed: ' + str(e))
+            print('read chunk ' + str(start) + ' failed: ' + str(e))
             break
     if not all_rows:
         print('no data in sheet')
