@@ -30,7 +30,9 @@ SSL_CTX.verify_mode = ssl.CERT_NONE
 CLOSED = '\u5df2\u5173\u95ed'
 RESOLVED = '\u5df2\u89e3\u51b3'
 REOPEN = '\u91cd\u65b0\u6253\u5f00'
+PENDING = '\u5f85\u89e3\u51b3'
 CLOSED_SET = (CLOSED, RESOLVED)
+OPEN_SET = (PENDING,)  # OPEN DI: only \u5f85\u89e3\u51b3
 HIGH_RISK = '\u9ad8\u98ce\u9669\u95ee\u9898'
 OVER90 = '\u8d8590\u5929'
 UNKNOWN = '\u672a\u77e5'
@@ -404,7 +406,7 @@ def compute_projects_data(bugs):
     for proj in sorted(by_project.keys()):
         pb = by_project[proj]
         open_di = round(sum(b['di_value'] for b in pb
-                            if b['status'] not in CLOSED_SET), 2)
+                            if b['status'] in OPEN_SET), 2)
         resolved_cnt = sum(1 for b in pb if b['status'] in CLOSED_SET)
         total = len(pb)
         sla = sum(1 for b in pb if b['sla_timeout'] > 0)
@@ -422,7 +424,7 @@ def compute_projects_data(bugs):
             health = 'danger'
         js_bugs = []
         for b in pb:
-            bod = b['di_value'] if b['status'] not in CLOSED_SET else 0.0
+            bod = b['di_value'] if b['status'] in OPEN_SET else 0.0
             js_bugs.append({
                 'id': b['id'], 'title': b['title'], 'level': b['level'],
                 'status': b['status'], 'assignee': b['assignee'],
@@ -461,7 +463,7 @@ def compute_trends(bugs, projects_data):
         if i == 0:
             cum.append(round(sum(b['di_value'] for b in valid
                                  if b['created'] <= d
-                                 and b['status'] not in CLOSED_SET), 2))
+                                 and b['status'] in OPEN_SET), 2))
         else:
             cum.append(round(cum[i - 1] + dnew[i] - dres[i], 2))
     pt = {}
@@ -480,7 +482,7 @@ def compute_trends(bugs, projects_data):
             if i == 0:
                 pc.append(round(sum(b['di_value'] for b in pb
                                     if b['created'] <= d
-                                    and b['status'] not in CLOSED_SET), 2))
+                                    and b['status'] in OPEN_SET), 2))
             else:
                 pc.append(round(pc[i - 1] + pn[i] - pr[i], 2))
         pt[proj] = [pc, pn, pr]
@@ -514,8 +516,9 @@ def compute_person_stats(bugs, projects_data):
             p['total_reopen'] += 1
             p['total_unsolved_di'] += b['di_value']
         else:
-            p['total_open_di'] += b['di_value']
             p['total_unsolved_di'] += b['di_value']
+            if b['status'] in OPEN_SET:
+                p['total_open_di'] += b['di_value']
         p['total_sla'] += b['sla_timeout']
         if b['sla_days'] > 0:
             p['sla_days_sum'] += b['sla_days']
@@ -529,8 +532,9 @@ def compute_person_stats(bugs, projects_data):
         elif b['status'] == REOPEN:
             p['proj_contrib'][proj]['unsolved_di'] += b['di_value']
         else:
-            p['proj_contrib'][proj]['open_di'] += b['di_value']
             p['proj_contrib'][proj]['unsolved_di'] += b['di_value']
+            if b['status'] in OPEN_SET:
+                p['proj_contrib'][proj]['open_di'] += b['di_value']
     for p in pm.values():
         p['total_open_di'] = round(p['total_open_di'], 2)
         p['total_solved_di'] = round(p['total_solved_di'], 2)
