@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-TPM Dashboard Build Script
-Reads data from DingTalk API or local files, computes metrics, injects into index.html
-"""
+# TPM Dashboard Build Script
+# Reads data from DingTalk API, computes metrics, injects into index.html
 import csv
 import json
 import os
