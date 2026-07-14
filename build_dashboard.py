@@ -357,16 +357,10 @@ def is_expired(b):
 
 def process_rows(rows):
     bugs = []
-    col_proj = None
-    col_val = None
-    for key in rows[0].keys() if rows else []:
-        if key and 'DI' in key and 'project' in key.lower():
-            col_proj = key
-        if key and 'DI' in key and key.endswith('\u503c'):
-            col_val = key
     for r in rows:
+        # Project: try DB-项目 (actual column name)
         project = ''
-        for k in ('DI-\u9879\u76ee', 'DB-\u9879\u76ee'):
+        for k in ('DB-\u9879\u76ee', 'DI-\u9879\u76ee'):
             v = r.get(k, '').strip()
             if v:
                 project = v
@@ -376,14 +370,15 @@ def process_rows(rows):
         di_val = parse_float(r.get('DB-DI\u503c', '0'))
         status = r.get('DB-\u4efb\u52a1\u72b6\u6001', '').strip()
         created = parse_date(r.get('\u521b\u5efa\u65f6\u95f4', ''))
-        di_date = parse_date(r.get('DI-Date', ''))
+        di_date = parse_date(r.get('DB-Date', '') or r.get('DI-Date', ''))
         sla_val = r.get('DB-SLA\u8d85\u65f6', '').strip()
         bugs.append({
-            'id': r.get('\u4efb\u52a1ID', '').strip(),
+            'id': r.get('\u4efb\u52a1ID', '').strip() or r.get('\u7f3a\u9677ID', '').strip(),
             'title': r.get('\u6807\u9898', '').strip(),
-            'level': r.get('BUG\u7b49\u7ea7', '').strip() or 'none',
+            'level': r.get('DB-BUG\u7b49\u7ea7', '').strip() or r.get('BUG\u7b49\u7ea7', '').strip() or 'none',
             'status': status,
             'assignee': r.get('\u6267\u884c\u8005', '').strip(),
+            'resolver': r.get('\u89e3\u51b3\u8005', '').strip(),
             'created': created or '',
             'di_date': di_date or '',
             'di_value': di_val,
