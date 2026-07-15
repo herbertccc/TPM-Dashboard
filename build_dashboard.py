@@ -504,16 +504,22 @@ def calc_trend(all_bugs):
                     daily_new[d] += b["rawWeight"]
     
     # OPEN DI = 截止到当天，尚未关闭的 AIOT bug 的 DI 值之和
-    # 用解决时间判断历史关闭状态：仅当 status=已关闭 且 resolved_dt <= D 时视为已关闭
+    # 最新天直接使用 bug 的 openDI 字段（与项目统计 calc_stats 保持一致）
+    # 历史天用解决时间判断关闭状态
+    today_date = now.date()
     cum_list = []
     for d_str, d_date in zip(dates, date_objs):
         open_di = 0.0
         for b in all_bug_list:
-            # 判断该 bug 在日期 D 是否已关闭
-            if b["status"] in ("已关闭", "不予解决", "非问题关闭") and b["_resolved_dt"] and b["_resolved_dt"].date() <= d_date:
-                continue
-            if b["_created_dt"] and b["_created_dt"].date() <= d_date:
-                open_di += b["rawWeight"]
+            if d_date == today_date:
+                # 最新天：直接使用预计算的 openDI（基于 db_task_status，与项目统计一致）
+                open_di += b["openDI"]
+            else:
+                # 历史天：判断该 bug 在日期 D 是否已关闭
+                if b["status"] in ("已关闭", "不予解决", "非问题关闭") and b["_resolved_dt"] and b["_resolved_dt"].date() <= d_date:
+                    continue
+                if b["_created_dt"] and b["_created_dt"].date() <= d_date:
+                    open_di += b["rawWeight"]
         cum_list.append(round(open_di, 1))
     
     return dates, cum_list, [round(daily_new.get(d, 0), 1) for d in dates], [round(daily_resolved.get(d, 0), 1) for d in dates]
@@ -531,6 +537,7 @@ def calc_single_project_trend(bugs):
     date_set = set(dates)
     daily_new = defaultdict(float)
     daily_resolved = defaultdict(float)
+    today_date = now.date()
     
     for b in bugs:
         if b["db_dept"] != "AIOT":
@@ -554,11 +561,15 @@ def calc_single_project_trend(bugs):
         for b in bugs:
             if b["db_dept"] != "AIOT":
                 continue
-            # 判断该 bug 在日期 D 是否已关闭
-            if b["status"] in ("已关闭", "不予解决", "非问题关闭") and b["_resolved_dt"] and b["_resolved_dt"].date() <= d_date:
-                continue
-            if b["_created_dt"] and b["_created_dt"].date() <= d_date:
-                open_di += b["rawWeight"]
+            if d_date == today_date:
+                # 最新天：直接使用预计算的 openDI（与项目统计一致）
+                open_di += b["openDI"]
+            else:
+                # 历史天：判断该 bug 在日期 D 是否已关闭
+                if b["status"] in ("已关闭", "不予解决", "非问题关闭") and b["_resolved_dt"] and b["_resolved_dt"].date() <= d_date:
+                    continue
+                if b["_created_dt"] and b["_created_dt"].date() <= d_date:
+                    open_di += b["rawWeight"]
         cum_list.append(round(open_di, 1))
     
     return cum_list, [round(daily_new.get(d, 0), 1) for d in dates], [round(daily_resolved.get(d, 0), 1) for d in dates]
