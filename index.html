@@ -139,6 +139,24 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",san
 .hr-metric { display:flex; flex-direction:column; align-items:center; gap:2px; }
 .hr-metric-val { font-weight:700; font-size:14px; }
 .hr-metric-sub { font-size:11px; color:var(--text-secondary); }
+.ranking-section { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:24px; }
+.ranking-col { background:var(--card-bg); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow); }
+.ranking-col-title { font-size:15px; font-weight:600; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+.ranking-col-title .ranking-icon { width:24px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; color:#fff; }
+.ranking-item { display:flex; align-items:center; padding:12px 14px; border-radius:8px; margin-bottom:8px; background:#fafbfc; transition:all 0.15s; }
+.ranking-item:hover { background:#f0f4ff; transform:translateX(2px); }
+.ranking-item:last-child { margin-bottom:0; }
+.ranking-num { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#fff; flex-shrink:0; margin-right:12px; }
+.ranking-num.r1 { background:linear-gradient(135deg,#f53f3f,#ff7d00); }
+.ranking-num.r2 { background:linear-gradient(135deg,#ff7d00,#ffb400); }
+.ranking-num.r3 { background:linear-gradient(135deg,#165dff,#722ed1); }
+.ranking-info { flex:1; min-width:0; }
+.ranking-name { font-size:13px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.ranking-metrics { display:flex; gap:10px; flex-wrap:wrap; font-size:11px; color:var(--text-secondary); }
+.ranking-metrics span { white-space:nowrap; }
+.ranking-metrics b { color:var(--text); font-weight:600; }
+.ranking-badge { flex-shrink:0; margin-left:10px; padding:3px 10px; border-radius:10px; font-size:12px; font-weight:700; }
+@media (max-width:900px) { .ranking-section { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
@@ -299,6 +317,69 @@ function renderGuide() {
       '</tbody></table></div>';
 }
 
+function buildRankingColumns() {
+  // 风险最多Top3：按 block*10 + sla*3 + open_di 降序
+  var riskList = PROJECT_NAMES.map(function(p) {
+    var s = PROJECTS_DATA[p].stats;
+    return { name:p, score: s.block * 10 + s.sla * 3 + s.open_di, block:s.block, sla:s.sla, open_di:s.open_di };
+  });
+  riskList.sort(function(a, b) { return b.score - a.score; });
+  var riskTop3 = riskList.slice(0, 3);
+
+  // 问题最多Top3：按未关闭问题数(total - resolved)降序
+  var issueList = PROJECT_NAMES.map(function(p) {
+    var s = PROJECTS_DATA[p].stats;
+    return { name:p, openCount: s.total - s.resolved, total:s.total, resolved:s.resolved, open_di:s.open_di, sla:s.sla, block:s.block };
+  });
+  issueList.sort(function(a, b) { return b.openCount - a.openCount; });
+  var issueTop3 = issueList.slice(0, 3);
+
+  function renderRankItem(item, idx, type) {
+    var numCls = idx === 0 ? 'r1' : idx === 1 ? 'r2' : 'r3';
+    var html = '<div class="ranking-item">';
+    html += '<div class="ranking-num ' + numCls + '">' + (idx + 1) + '</div>';
+    html += '<div class="ranking-info">';
+    html += '<div class="ranking-name">' + item.name + '</div>';
+    html += '<div class="ranking-metrics">';
+    if (type === 'risk') {
+      html += '<span>BLOCK: <b style="color:' + (item.block > 0 ? 'var(--red)' : 'var(--text)') + '">' + item.block + '</b></span>';
+      html += '<span>SLA超时: <b style="color:' + (item.sla > 0 ? 'var(--orange)' : 'var(--text)') + '">' + item.sla + '</b></span>';
+      html += '<span>OPEN DI: <b style="color:var(--red)">' + item.open_di.toFixed(1) + '</b></span>';
+    } else {
+      html += '<span>未关闭: <b style="color:var(--red)">' + item.openCount + '</b></span>';
+      html += '<span>总计: <b>' + item.total + '</b></span>';
+      html += '<span>OPEN DI: <b style="color:var(--red)">' + item.open_di.toFixed(1) + '</b></span>';
+    }
+    html += '</div></div>';
+    if (type === 'risk') {
+      html += '<div class="ranking-badge" style="background:#fff2f0;color:var(--red)">风险 ' + item.score.toFixed(1) + '</div>';
+    } else {
+      html += '<div class="ranking-badge" style="background:#fff7e6;color:var(--orange)">' + item.openCount + '个</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  var leftHtml = '';
+  riskTop3.forEach(function(item, idx) { leftHtml += renderRankItem(item, idx, 'risk'); });
+  if (riskTop3.length === 0) leftHtml = '<div style="text-align:center;padding:20px;color:var(--text-secondary)">暂无数据</div>';
+
+  var rightHtml = '';
+  issueTop3.forEach(function(item, idx) { rightHtml += renderRankItem(item, idx, 'issue'); });
+  if (issueTop3.length === 0) rightHtml = '<div style="text-align:center;padding:20px;color:var(--text-secondary)">暂无数据</div>';
+
+  return '<div class="ranking-section">' +
+    '<div class="ranking-col">' +
+      '<div class="ranking-col-title"><div class="ranking-icon" style="background:linear-gradient(135deg,#f53f3f,#ff7d00)">!</div>风险最多项目 Top3</div>' +
+      leftHtml +
+    '</div>' +
+    '<div class="ranking-col">' +
+      '<div class="ranking-col-title"><div class="ranking-icon" style="background:linear-gradient(135deg,#ff7d00,#ffb400)">#</div>问题最多项目 Top3</div>' +
+      rightHtml +
+    '</div>' +
+  '</div>';
+}
+
 function renderOverview() {
   var tableRows = '';
   PROJECT_NAMES.forEach(function(p) {
@@ -319,6 +400,7 @@ function renderOverview() {
   });
   return '<div class="page-header"><div class="page-title">项目总览</div><div class="page-desc">所有项目健康度汇总 · 近30天趋势</div></div>' +
     '<div class="chart-container"><div class="chart-title">OPEN DI值趋势</div><div id="trendChart" class="chart-area"></div></div>' +
+    buildRankingColumns() +
     buildOverviewRisk() +
     '<div class="hr-table-wrap">' +
       '<div class="hr-table-header">' +
