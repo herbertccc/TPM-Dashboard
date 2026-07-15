@@ -861,6 +861,8 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",san
 .hr-table tbody td { padding:12px 16px; font-size:13px; text-align:center; border-bottom:1px solid #f0f1f3; }
 .hr-table tbody td:first-child { text-align:left; padding-left:20px; }
 .hr-table tbody tr:last-child td { border-bottom:none; }
+.hr-table tbody tr.hr-dept-divider td { padding:0; border-bottom:none; background:#fff; }
+.hr-table tbody tr.hr-dept-divider:hover { background:#fff; }
 .hr-pill { display:inline-block; padding:2px 10px; border-radius:10px; font-size:12px; font-weight:600; }
 .hr-metric { display:flex; flex-direction:column; align-items:center; gap:2px; }
 .hr-metric-val { font-weight:700; font-size:14px; }
@@ -901,7 +903,10 @@ let selectedProject = null;
 function renderNav() {
   const menu = document.getElementById('navMenu');
   let html = '<li class="nav-item active" data-page="overview" onclick="switchPage(\'overview\')"> 项目总览</li>';
-  PROJECT_NAMES.forEach(function(p) {
+  var sortedProjects = PROJECT_NAMES.slice().sort(function(a, b) {
+    return PROJECTS_DATA[b].stats.open_di - PROJECTS_DATA[a].stats.open_di;
+  });
+  sortedProjects.forEach(function(p) {
     var s = PROJECTS_DATA[p].stats;
     var tagClass = s.health === 'normal' ? '' : s.health === 'warning' ? ' danger' : ' danger';
     var tagColor = s.health === 'normal' ? '#00b42a' : s.health === 'warning' ? '#ff7d00' : '#f53f3f';
@@ -1094,98 +1099,97 @@ function renderProjectDetail(pn) {
   // 人员统计
   var pm = {};
   bugs.forEach(function(b) {
-    if (!pm[b.assignee]) pm[b.assignee] = {name:b.assignee, total:0, resolved:0, reopen:0, openDI:0, sla:0, slaDaysSum:0, slaDaysCount:0, role:b.db_role || '', dept:b.db_dept || ''};
+    if (!pm[b.assignee]) pm[b.assignee] = {name:b.assignee, total:0, resolved:0, reopen:0, openDI:0, pendingReturnDI:0, pendingHandleDI:0, sla:0, slaDaysSum:0, slaDaysCount:0, role:b.db_role || '', dept:b.db_dept || ''};
     pm[b.assignee].total++;
     if (b.status === '已解决' || b.status === '已关闭') pm[b.assignee].resolved++;
     if (b.status === '重新打开') pm[b.assignee].reopen++;
     pm[b.assignee].openDI += b.openDI;
+    if (b.db_task_status === '待回归') pm[b.assignee].pendingReturnDI += b.openDI;
+    if (b.db_task_status === '待处理') pm[b.assignee].pendingHandleDI += b.openDI;
     pm[b.assignee].sla += (b.sla_timeout || 0);
     if (b.sla_days > 0) { pm[b.assignee].slaDaysSum += b.sla_days; pm[b.assignee].slaDaysCount++; }
   });
   var persons = Object.values(pm);
   // 风险识别仅用AIOT部门人员
   var aiotPersons = persons.filter(function(p) { return p.dept === 'AIOT'; });
-  persons.sort(function(a,b) {
-    var ra = a.total > 0 ? a.resolved/a.total : 0;
-    var rb = b.total > 0 ? b.resolved/b.total : 0;
-    return rb - ra;
-  });
 
   // 风险识别
   var riskHtml = buildRiskHtml(aiotPersons, s);
 
-  // 人力视图 - 按DB-部门分组，再按DB-角色排序（AIoT开发→软件测试→Other），表单展示
+  // 人力视图 - 按部门分组，统一表格列对齐，按OPEN DI降序
   var deptGroups = {};
   persons.forEach(function(p) {
     var dept = p.dept || '未知';
     if (!deptGroups[dept]) deptGroups[dept] = [];
     deptGroups[dept].push(p);
   });
-  
-  var roleOrder = {'AIoT开发': 0, '软件测试': 1, 'Other': 2};
-  function roleSortKey(role) {
-    return roleOrder[role] !== undefined ? roleOrder[role] : 99;
-  }
-  
+
   var pc = '';
   var deptOrder = ['AIOT','整机','其他','未知'];
+  var isFirstDept = true;
   deptOrder.forEach(function(dept) {
     if (!deptGroups[dept]) return;
     var list = deptGroups[dept];
-    // 按角色排序
+    // 按OPEN DI降序排序
     list.sort(function(a, b) {
-      var ra = roleSortKey(a.role);
-      var rb = roleSortKey(b.role);
-      if (ra !== rb) return ra - rb;
+      var diDiff = b.openDI - a.openDI;
+      if (diDiff !== 0) return diDiff;
       return a.name.localeCompare(b.name);
     });
-    
-    var tableRows = '';
+
+    // 部门分隔行
+    if (!isFirstDept) {
+      pc += '<tr class="hr-dept-divider"><td colspan="9"><div class="hr-table-header" style="margin:12px 0 6px"><div class="hr-table-header-dot"></div><div class="hr-table-header-title">' + dept + '</div><div class="hr-table-header-count">' + list.length + '人</div></div></td></tr>';
+    } else {
+      pc += '<tr class="hr-dept-divider"><td colspan="9"><div class="hr-table-header" style="margin:0 0 6px"><div class="hr-table-header-dot"></div><div class="hr-table-header-title">' + dept + '</div><div class="hr-table-header-count">' + list.length + '人</div></div></td></tr>';
+      isFirstDept = false;
+    }
+
     list.forEach(function(p) {
       var rate = p.total > 0 ? (p.resolved/p.total*100).toFixed(1) : '0.0';
       var rr = parseFloat(rate);
       var rrColor = rr >= 90 ? '#00b42a' : rr >= 75 ? '#ff7d00' : '#f53f3f';
       var rrBg = rr >= 90 ? '#e8ffea' : rr >= 75 ? '#fff7e6' : '#fff2f0';
       var slaAvg = p.slaDaysCount > 0 ? (p.slaDaysSum / p.slaDaysCount).toFixed(1) : '-';
-      tableRows += '<tr>' +
+      pc += '<tr>' +
         '<td>' + p.name + '</td>' +
         '<td><span style="font-size:12px;color:var(--text-secondary)">' + (p.role || '-') + '</span></td>' +
         '<td><div class="hr-metric"><span class="hr-pill" style="background:' + rrBg + ';color:' + rrColor + '">' + rate + '%</span></div></td>' +
         '<td><span style="font-weight:700;font-size:14px;color:var(--red)">' + p.openDI.toFixed(1) + '</span></td>' +
+        '<td><span style="font-weight:600;color:var(--orange)">' + p.pendingReturnDI.toFixed(1) + '</span></td>' +
+        '<td><span style="font-weight:600;color:var(--text)">' + p.pendingHandleDI.toFixed(1) + '</span></td>' +
         '<td><div class="hr-metric"><span class="hr-pill" style="background:' + (p.sla > 0 ? '#fff7e6' : '#f2f3f5') + ';color:' + (p.sla > 0 ? '#ff7d00' : 'var(--text)') + '">' + p.sla + '</span>' + (p.slaDaysCount > 0 ? '<span class="hr-metric-sub">均' + slaAvg + '天</span>' : '') + '</div></td>' +
         '<td><span class="hr-pill" style="background:' + (p.reopen > 0 ? '#fff7e6' : '#f2f3f5') + ';color:' + (p.reopen > 0 ? 'var(--orange)' : 'var(--text-secondary)') + '">' + p.reopen + '</span></td>' +
         '<td><span style="font-weight:600">' + p.resolved + '/' + p.total + '</span></td>' +
         '</tr>';
     });
-    
-    pc += '<div class="hr-table-wrap">' +
-      '<div class="hr-table-header">' +
-        '<div class="hr-table-header-dot"></div>' +
-        '<div class="hr-table-header-title">' + dept + '</div>' +
-        '<div class="hr-table-header-count">' + list.length + '人</div>' +
-      '</div>' +
-      '<table class="hr-table">' +
-      '<thead><tr>' +
-      '<th>人员</th>' +
-      '<th>角色</th>' +
-      '<th>解决率</th>' +
-      '<th>OPEN DI</th>' +
-      '<th>SLA超时</th>' +
-      '<th>重开次数</th>' +
-      '<th>BUG数量</th>' +
-      '</tr></thead><tbody>' + tableRows + '</tbody></table></div>';
   });
+
+  var tableHtml = '<div class="hr-table-wrap"><table class="hr-table">' +
+    '<thead><tr>' +
+    '<th>人员</th>' +
+    '<th>角色</th>' +
+    '<th>解决率</th>' +
+    '<th>OPEN DI</th>' +
+    '<th>待回归DI</th>' +
+    '<th>待处理DI</th>' +
+    '<th>SLA超时</th>' +
+    '<th>重开次数</th>' +
+    '<th>BUG数量</th>' +
+    '</tr></thead><tbody>' + pc + '</tbody></table></div>';
 
   return '<div class="page-header"><div class="page-title">' + pn + '项目</div></div>' +
     '<div class="chart-container"><div class="chart-title">OPEN DI趋势</div><div id="projectTrendChart" class="chart-area"></div></div>' +
     riskHtml +
     '<div style="font-size:15px;font-weight:600;margin:18px 0 14px">人力视图</div>' +
-    pc;
+    tableHtml;
 }
 
 function renderHR() {
   var personDeptMap = {};
   var personRoleMap = {};
+  var personPendingHandle = {};
+  var personPendingReturn = {};
   PROJECT_NAMES.forEach(function(pn) {
     PROJECTS_DATA[pn].bugs.forEach(function(b) {
       if (b.assignee) {
@@ -1195,6 +1199,10 @@ function renderHR() {
         if (!personRoleMap[b.assignee]) {
           personRoleMap[b.assignee] = b.db_role || "Other";
         }
+        if (!personPendingHandle[b.assignee]) personPendingHandle[b.assignee] = 0;
+        if (!personPendingReturn[b.assignee]) personPendingReturn[b.assignee] = 0;
+        if (b.db_task_status === '待处理') personPendingHandle[b.assignee]++;
+        if (b.db_task_status === '待回归') personPendingReturn[b.assignee]++;
       }
     });
   });
@@ -1231,10 +1239,8 @@ function renderHR() {
     var tableRows = '';
     list.forEach(function(p, idx) {
       allPersons.push(p);
-      var sr = p.total_tickets > 0 ? (p.solved_tickets / p.total_tickets * 100).toFixed(1) : '0.0';
-      var srVal = parseFloat(sr);
-      // 解决率颜色：100%黑色，<100%红色
-      var srTextColor = srVal >= 100 ? 'var(--text)' : 'var(--red)';
+      var phCount = personPendingHandle[p.name] || 0;
+      var prCount = personPendingReturn[p.name] || 0;
       var slaAvg = p.sla_days_count > 0 ? (p.sla_days_sum / p.sla_days_count).toFixed(1) : '-';
       // SLA超时颜色：0黑色，>0红色
       var slaTextColor = p.total_sla > 0 ? 'var(--red)' : 'var(--text)';
@@ -1244,7 +1250,8 @@ function renderHR() {
       tableRows += '<tr>' +
         '<td>' + p.name + '</td>' +
         '<td><span style="font-size:12px;color:var(--text-secondary)">' + role + '</span></td>' +
-        '<td style="color:' + srTextColor + '">' + p.solved_tickets + '/' + p.total_tickets + '（' + sr + '%）</td>' +
+        '<td style="font-weight:600">' + phCount + '</td>' +
+        '<td style="font-weight:600;color:' + (prCount > 0 ? 'var(--orange)' : 'var(--text)') + '">' + prCount + '</td>' +
         '<td style="color:' + (p.total_open_di > 0 ? 'var(--red)' : 'var(--text)') + '">' + p.total_open_di.toFixed(1) + '</td>' +
         '<td style="color:' + slaTextColor + '">' + p.total_sla + (p.sla_days_count > 0 ? '（均' + slaAvg + '天）' : '') + '</td>' +
         '<td style="color:' + reopenTextColor + '">' + p.total_reopen + '</td>' +
@@ -1260,7 +1267,8 @@ function renderHR() {
       '<thead><tr>' +
       '<th>人员</th>' +
       '<th>角色</th>' +
-      '<th>工单数 (解决率)</th>' +
+      '<th>待处理</th>' +
+      '<th>待回归</th>' +
       '<th>OPEN DI</th>' +
       '<th>SLA超时</th>' +
       '<th>重开次数</th>' +
@@ -1427,11 +1435,11 @@ function initCharts() {
       tooltip: { trigger:'axis', axisPointer:{type:'cross'} },
       legend: { data:['OPEN DI','每日新增','每日解决'], top:0 },
       xAxis: { type:'category', data:TREND_DATES, axisLabel:{fontSize:10} },
-      yAxis: [{ type:'value', name:'OPEN DI' }, { type:'value', name:'每日DI', position:'right' }],
+      yAxis: { type:'value', name:'OPEN DI' },
       series: [
         { name:'OPEN DI', type:'line', data:CUMULATIVE_DI, smooth:true, lineStyle:{width:2} },
-        { name:'每日新增', type:'bar', yAxisIndex:1, data:DAILY_NEW, itemStyle:{color:'#f53f3f'}, barWidth:6 },
-        { name:'每日解决', type:'bar', yAxisIndex:1, data:DAILY_RESOLVED, itemStyle:{color:'#00b42a'}, barWidth:6 }
+        { name:'每日新增', type:'bar', data:DAILY_NEW, itemStyle:{color:'#f53f3f'}, barWidth:6 },
+        { name:'每日解决', type:'bar', data:DAILY_RESOLVED, itemStyle:{color:'#00b42a'}, barWidth:6 }
       ]
     });
   }
@@ -1442,11 +1450,11 @@ function initCharts() {
       tooltip: { trigger:'axis', axisPointer:{type:'cross'} },
       legend: { data:['OPEN DI','每日新增','每日解决'], top:0 },
       xAxis: { type:'category', data:TREND_DATES, axisLabel:{fontSize:10} },
-      yAxis: [{ type:'value', name:'OPEN DI' }, { type:'value', name:'每日DI', position:'right' }],
+      yAxis: { type:'value', name:'OPEN DI' },
       series: [
         { name:'OPEN DI', type:'line', data:pt[0], smooth:true, lineStyle:{width:2} },
-        { name:'每日新增', type:'bar', yAxisIndex:1, data:pt[1], itemStyle:{color:'#f53f3f'}, barWidth:6 },
-        { name:'每日解决', type:'bar', yAxisIndex:1, data:pt[2], itemStyle:{color:'#00b42a'}, barWidth:6 }
+        { name:'每日新增', type:'bar', data:pt[1], itemStyle:{color:'#f53f3f'}, barWidth:6 },
+        { name:'每日解决', type:'bar', data:pt[2], itemStyle:{color:'#00b42a'}, barWidth:6 }
       ]
     });
   }
@@ -1780,7 +1788,7 @@ window.addEventListener('resize', function() {
 """
 
 # 清理bug数据：移除内部字段 + 前端不需要的字段（减小HTML体积）
-_FRONTEND_BUG_FIELDS = {"assignee", "status", "db_role", "db_dept", "openDI", "sla_timeout", "sla_days"}
+_FRONTEND_BUG_FIELDS = {"assignee", "status", "db_role", "db_dept", "db_task_status", "openDI", "sla_timeout", "sla_days"}
 for pn in PROJECT_NAMES:
     for b in all_projects_bugs[pn]:
         # 删除所有前端不需要的字段
