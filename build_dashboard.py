@@ -1779,11 +1779,14 @@ window.addEventListener('resize', function() {
 });
 """
 
-# 清理bug数据中的内部datetime字段（不可JSON序列化）
+# 清理bug数据：移除内部字段 + 前端不需要的字段（减小HTML体积）
+_FRONTEND_BUG_FIELDS = {"assignee", "status", "db_role", "db_dept", "openDI", "sla_timeout", "sla_days"}
 for pn in PROJECT_NAMES:
     for b in all_projects_bugs[pn]:
-        b.pop("_created_dt", None)
-        b.pop("_resolved_dt", None)
+        # 删除所有前端不需要的字段
+        for key in list(b.keys()):
+            if key not in _FRONTEND_BUG_FIELDS:
+                del b[key]
 
 # ===== 生成 HTML =====
 # 构建JS期望的数据结构: {项目名: {stats, bugs}}
