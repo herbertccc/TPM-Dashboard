@@ -1798,9 +1798,10 @@ js_injected = js.replace('__PROJECTS_JSON__', json.dumps(projects_data_for_js, e
 # 转义</script>防止浏览器提前截断
 js_safe = js_injected.replace('</script>', '<\\/script>')
 
+# 构建时间戳（用于缓存刷新）
+build_ts = datetime.now().strftime('%Y%m%d%H%M%S')
 
-
-html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">\n<meta http-equiv="Pragma" content="no-cache">\n<meta http-equiv="Expires" content="0">\n<title>项目管理汇报看板</title>\n<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>\n<style>' + css + '</style>\n</head>\n<body>\n<div class="sidebar">\n  <div class="sidebar-header"><div class="sidebar-logo">AI</div><div class="sidebar-title">项目管理看板</div></div>\n  <ul class="nav-menu" id="navMenu"></ul>\n</div>\n<div class="main" id="mainContent"></div>\n<script>' + js_safe + '</script>\n</body>\n</html>'
+html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">\n<meta http-equiv="Pragma" content="no-cache">\n<meta http-equiv="Expires" content="0">\n<title>项目管理汇报看板</title>\n<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js?v=' + build_ts + '"></script>\n<style>' + css + '</style>\n</head>\n<body>\n<div class="sidebar">\n  <div class="sidebar-header"><div class="sidebar-logo">AI</div><div class="sidebar-title">项目管理看板</div></div>\n  <ul class="nav-menu" id="navMenu"></ul>\n</div>\n<div class="main" id="mainContent"></div>\n<script>var BUILD_TS="' + build_ts + '";' + js_safe + '</script>\n</body>\n</html>'
 
 with open('index.html', 'w', encoding='utf-8') as f:
     f.write(html)
