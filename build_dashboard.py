@@ -347,16 +347,12 @@ def parse_bugs_from_rows(data_rows, headers, person_mapping):
         # === DI 计算 ===
         is_aiot = (db_dept == "AIOT")
         if is_aiot:
-            if status in ("已关闭", "已完成"):
-                open_di = solved_di = unsolved_di = 0
-            elif status == "已解决":
-                open_di = weight
-                solved_di = weight
-                unsolved_di = 0
-            else:
-                open_di = weight
-                solved_di = 0
-                unsolved_di = weight
+            # OPEN DI: DB-任务状态为"待处理"或"待回归"时计入
+            open_di = weight if db_task_status in ("待处理", "待回归") else 0
+            # 已解决DI: 状态为"已解决"或"已关闭"
+            solved_di = weight if status in ("已解决", "已关闭", "已完成") else 0
+            # 未解决DI: 状态非"已解决"/"已关闭"/"已完成"
+            unsolved_di = weight if status not in ("已解决", "已关闭", "已完成") else 0
         else:
             open_di = solved_di = unsolved_di = 0
 
@@ -378,6 +374,7 @@ def parse_bugs_from_rows(data_rows, headers, person_mapping):
             "reopen_count": reopen_count,
             "db_role": db_role,
             "db_dept": db_dept,
+            "db_task_status": db_task_status,
             "sla_timeout": sla_timeout,
             "sla_days": sla_days,
             "rawWeight": weight,
@@ -466,18 +463,18 @@ def calc_trend(all_bugs):
                 d = b["_resolved_dt"].strftime("%m-%d")
                 if d in date_set:
                     daily_resolved[d] += b["rawWeight"]
-            # 其他状态 → 按创建时间计入每日新增
-            elif status not in ("已解决", "已关闭", "已完成") and b["_created_dt"]:
+            # 按创建时间计入每日新增（所有 bug 都算，不限状态）
+            if b["_created_dt"]:
                 d = b["_created_dt"].strftime("%m-%d")
                 if d in date_set:
                     daily_new[d] += b["rawWeight"]
     
-    # OPEN DI = 状态非"已关闭"且非"已完成"的 AIOT bug 的 DI 值之和
+    # OPEN DI = 截止到当天，状态为"待解决"的 AIOT bug 的 DI 值之和
     cum_list = []
     for d_str, d_date in zip(dates, date_objs):
         open_di = 0.0
         for b in all_bug_list:
-            if b["status"] in ("已关闭", "已完成"):
+            if b["db_task_status"] not in ("待处理", "待回归"):
                 continue
             if b["_created_dt"] and b["_created_dt"].date() <= d_date:
                 open_di += b["rawWeight"]
@@ -508,8 +505,8 @@ def calc_single_project_trend(bugs):
             d = b["_resolved_dt"].strftime("%m-%d")
             if d in date_set:
                 daily_resolved[d] += b["rawWeight"]
-        # 其他状态 → 按创建时间计入每日新增
-        elif status not in ("已解决", "已关闭", "已完成") and b["_created_dt"]:
+        # 按创建时间计入每日新增（所有 bug 都算，不限状态）
+        if b["_created_dt"]:
             d = b["_created_dt"].strftime("%m-%d")
             if d in date_set:
                 daily_new[d] += b["rawWeight"]
@@ -520,7 +517,7 @@ def calc_single_project_trend(bugs):
         for b in bugs:
             if b["db_dept"] != "AIOT":
                 continue
-            if b["status"] in ("已关闭", "已完成"):
+            if b["db_task_status"] not in ("待处理", "待回归"):
                 continue
             if b["_created_dt"] and b["_created_dt"].date() <= d_date:
                 open_di += b["rawWeight"]
