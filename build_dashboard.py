@@ -472,6 +472,55 @@ projects_stats = {}
 for pn in PROJECT_NAMES:
     projects_stats[pn] = calc_stats(all_projects_bugs[pn])
 
+# ===== OPEN DI 诊断输出 =====
+print("\n🔍 OPEN DI 诊断（AIOT部门）:")
+from collections import Counter
+aiot_bugs = [b for b in all_bugs_raw if b["db_dept"] == "AIOT"]
+print(f"  AIOT部门总bug数: {len(aiot_bugs)}")
+
+# 按原始状态分组统计
+status_di = {}
+for b in aiot_bugs:
+    s = b["status"]
+    if s not in status_di:
+        status_di[s] = {"count": 0, "open_di": 0, "db_task_statuses": set()}
+    status_di[s]["count"] += 1
+    status_di[s]["open_di"] += b["openDI"]
+    status_di[s]["db_task_statuses"].add(b["db_task_status"])
+
+print(f"\n  按原始【任务状态】分组:")
+for s, info in sorted(status_di.items(), key=lambda x: -x[1]["open_di"]):
+    db_ts = ", ".join(info["db_task_statuses"])
+    print(f"    {s}: {info['count']}条, openDI={info['open_di']:.1f}, → DB-任务状态=[{db_ts}]")
+
+# 按 DB-任务状态分组统计
+db_ts_di = {}
+for b in aiot_bugs:
+    ts = b["db_task_status"]
+    if ts not in db_ts_di:
+        db_ts_di[ts] = {"count": 0, "open_di": 0}
+    db_ts_di[ts]["count"] += 1
+    db_ts_di[ts]["open_di"] += b["openDI"]
+
+print(f"\n  按【DB-任务状态】分组:")
+total_open = 0
+for ts, info in sorted(db_ts_di.items(), key=lambda x: -x[1]["open_di"]):
+    print(f"    {ts}: {info['count']}条, openDI={info['open_di']:.1f}")
+    total_open += info["open_di"]
+print(f"  OPEN DI 合计: {total_open:.1f}")
+
+# 检查是否有未映射的状态
+mapped_statuses = {"已关闭", "不予解决", "非问题关闭", "外部问题", "设计如此", "重复问题", "无法重现", "回归验证", "已解决", "挂起", "重复打开", "修复中", "激活", "待处理", "重新打开"}
+unmapped = [s for s in status_di.keys() if s not in mapped_statuses]
+if unmapped:
+    print(f"\n  ⚠️ 发现未映射的状态值:")
+    for s in unmapped:
+        info = status_di[s]
+        print(f"    '{s}': {info['count']}条, openDI={info['open_di']:.1f} (db_task_status='{s}', 被计入OPEN DI)")
+else:
+    print(f"\n  ✅ 所有状态值均已映射")
+print()
+
 
 # ===== 趋势计算（总览）=====
 def calc_trend(all_bugs):
