@@ -94,9 +94,10 @@ def _dingtalk_read_range(node, sheet_id, range_str):
     return None
 
 
-def _dingtalk_read_large_sheet(node, sheet_id, total_rows, col_start='A', col_end='L', chunk_size=1000):
+def _dingtalk_read_large_sheet(node, sheet_id, total_rows, col_start='A', col_end='L', chunk_size=1000, expected_headers=None):
     """分块读取大型表格，返回 (headers, data_rows)
-    chunk_size=2500: 2500行 × 12列 = 30000 单元格，正好在 API 限制内
+    chunk_size=1000: 避免 API 限制
+    expected_headers: 可选，用于验证第一行是否为表头
     """
     all_rows = []
     for start in range(1, total_rows + 2, chunk_size):
@@ -112,8 +113,31 @@ def _dingtalk_read_large_sheet(node, sheet_id, total_rows, col_start='A', col_en
         time.sleep(1)  # 避免 API 限流
     if not all_rows:
         return [], []
-    headers = [str(h).strip() for h in all_rows[0]]
-    return headers, all_rows[1:]
+
+    # 验证第一行是否为表头
+    first_row = [str(c).strip() if c else "" for c in all_rows[0]]
+    is_header = True
+    if expected_headers:
+        # 检查第一行是否包含预期的表头关键字
+        match_count = sum(1 for eh in expected_headers if eh in first_row)
+        is_header = match_count >= len(expected_headers) * 0.5  # 至少匹配50%
+    
+    if is_header and expected_headers and all(h in first_row for h in expected_headers):
+        # 完美匹配，使用实际表头
+        headers = first_row
+        data_rows = all_rows[1:]
+    elif is_header:
+        headers = first_row
+        data_rows = all_rows[1:]
+    else:
+        # 第一行不是表头，使用回退表头，所有行都是数据
+        print(f"  ⚠️ 第一行不是表头，使用回退列名")
+        if expected_headers:
+            headers = expected_headers
+        else:
+            headers = [f"col_{i}" for i in range(len(first_row))]
+        data_rows = all_rows
+    return headers, data_rows
 
 
 def _networkdays(start_date, end_date):
@@ -223,7 +247,13 @@ def _excel_serial_to_date_str(val):
 
 # ===== 读取人员映射表 =====
 print("📖 读取人员映射表...")
-person_map_data = _dingtalk_read_range(DEFECT_NODE, DEFECT_PERSON_SHEET, "A1:D100")
+person_map_data = None
+for _retry in range(3):
+    person_map_data = _dingtalk_read_range(DEFECT_NODE, DEFECT_PERSON_SHEET, "A1:D200")
+    if person_map_data and len(person_map_data) > 1:
+        break
+    print(f"  ⏳ 人员映射表读取失败，重试 {_retry+1}/3...")
+    time.sleep(2)
 person_mapping = {}  # {姓名: {"role": ..., "dept": ...}}
 if person_map_data and len(person_map_data) > 1:
     for row in person_map_data[1:]:  # 跳过表头
@@ -241,10 +271,13 @@ else:
 
 # ===== 读取缺陷列表数据（仅 A-L 列，避免公式列超时）=====
 print("📖 读取缺陷列表数据...")
-TOTAL_DATA_ROWS = 9500  # 略大于实际行数以确保覆盖
+TOTAL_DATA_ROWS = 10000  # 足够大以覆盖所有行
+EXPECTED_DEFECT_HEADERS = ["DB-项目", "标题", "任务ID", "执行者", "任务状态", "解决者",
+                           "解决时间", "BUG等级", "创建时间", "创建者", "重开次数", "释放管控"]
 headers, data_rows = _dingtalk_read_large_sheet(
     DEFECT_NODE, DEFECT_DATA_SHEET, TOTAL_DATA_ROWS,
-    col_start='A', col_end='L', chunk_size=1000
+    col_start='A', col_end='L', chunk_size=1000,
+    expected_headers=EXPECTED_DEFECT_HEADERS
 )
 print(f"  📊 读取完成: {len(data_rows)} 行数据, 列: {headers}")
 
