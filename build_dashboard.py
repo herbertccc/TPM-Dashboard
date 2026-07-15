@@ -458,8 +458,9 @@ def calc_trend(all_bugs):
                 continue
             all_bug_list.append(b)
             status = b["status"]
-            # 已解决/已关闭/已完成 → 按解决时间计入每日解决
-            if status in ("已解决", "已关闭", "已完成") and b["_resolved_dt"]:
+            # 每日解决: DB-任务状态为待回归或已关闭，以解决时间为维度
+            is_closed_like = (b["db_task_status"] in ("待回归", "已关闭"))
+            if is_closed_like and b["_resolved_dt"]:
                 d = b["_resolved_dt"].strftime("%m-%d")
                 if d in date_set:
                     daily_resolved[d] += b["rawWeight"]
@@ -469,12 +470,14 @@ def calc_trend(all_bugs):
                 if d in date_set:
                     daily_new[d] += b["rawWeight"]
     
-    # OPEN DI = 截止到当天，db_task_status为非"已关闭"的 AIOT bug 的 DI 值之和
+    # OPEN DI = 截止到当天，尚未关闭的 AIOT bug 的 DI 值之和
+    # 用解决时间判断历史关闭状态：仅当 status=已关闭 且 resolved_dt <= D 时视为已关闭
     cum_list = []
     for d_str, d_date in zip(dates, date_objs):
         open_di = 0.0
         for b in all_bug_list:
-            if b["db_task_status"] == "已关闭":
+            # 判断该 bug 在日期 D 是否已关闭
+            if b["status"] in ("已关闭", "不予解决", "非问题关闭") and b["_resolved_dt"] and b["_resolved_dt"].date() <= d_date:
                 continue
             if b["_created_dt"] and b["_created_dt"].date() <= d_date:
                 open_di += b["rawWeight"]
@@ -500,8 +503,9 @@ def calc_single_project_trend(bugs):
         if b["db_dept"] != "AIOT":
             continue
         status = b["status"]
-        # 已解决/已关闭/已完成 → 按解决时间计入每日解决
-        if status in ("已解决", "已关闭", "已完成") and b["_resolved_dt"]:
+        # 每日解决: DB-任务状态为待回归或已关闭，以解决时间为维度
+        is_closed_like = (b["db_task_status"] in ("待回归", "已关闭"))
+        if is_closed_like and b["_resolved_dt"]:
             d = b["_resolved_dt"].strftime("%m-%d")
             if d in date_set:
                 daily_resolved[d] += b["rawWeight"]
@@ -517,7 +521,8 @@ def calc_single_project_trend(bugs):
         for b in bugs:
             if b["db_dept"] != "AIOT":
                 continue
-            if b["db_task_status"] == "已关闭":
+            # 判断该 bug 在日期 D 是否已关闭
+            if b["status"] in ("已关闭", "不予解决", "非问题关闭") and b["_resolved_dt"] and b["_resolved_dt"].date() <= d_date:
                 continue
             if b["_created_dt"] and b["_created_dt"].date() <= d_date:
                 open_di += b["rawWeight"]
