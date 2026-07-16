@@ -269,7 +269,7 @@ else:
     print("  ⚠️ 无法读取人员映射表")
 
 
-# ===== 读取缺陷列表数据（仅 A-L 列，避免公式列超时）=====
+# ===== 读取缺陷列表数据（A-L 列原始数据 + U 列公式部门）=====
 print("📖 读取缺陷列表数据...")
 TOTAL_DATA_ROWS = 10000  # 足够大以覆盖所有行
 EXPECTED_DEFECT_HEADERS = ["DB-项目", "标题", "任务ID", "执行者", "任务状态", "解决者",
@@ -281,16 +281,44 @@ headers, data_rows = _dingtalk_read_large_sheet(
 )
 print(f"  📊 读取完成: {len(data_rows)} 行数据, 列: {headers}")
 
+# ===== 单独读取公式列: O(DB-任务状态), R(DB-DI值), U(DB-部门) =====
+print("📖 读取公式列 (O/R/U)...")
+
+def _read_single_col(col_letter, total_rows, chunk_size=1000):
+    """读取单列数据，返回去掉表头后的值列表"""
+    col_rows = []
+    for start in range(1, total_rows + 2, chunk_size):
+        end = min(start + chunk_size - 1, total_rows + 1)
+        range_str = f"{col_letter}{start}:{col_letter}{end}"
+        print(f"  📖 读取 {range_str}...")
+        chunk = _dingtalk_read_range(DEFECT_NODE, DEFECT_DATA_SHEET, range_str)
+        if chunk:
+            col_rows.extend(chunk)
+            print(f"     ✅ {len(chunk)} 行")
+        else:
+            print(f"     ⚠️ 跳过 {range_str}")
+        time.sleep(1)
+    return [row[0] if row else "" for row in col_rows[1:]] if col_rows else []
+
+task_status_values = _read_single_col('O', TOTAL_DATA_ROWS)
+print(f"  📊 DB-任务状态列: {len(task_status_values)} 行")
+
+di_values = _read_single_col('R', TOTAL_DATA_ROWS)
+print(f"  📊 DB-DI值列: {len(di_values)} 行")
+
+dept_values = _read_single_col('U', TOTAL_DATA_ROWS)
+print(f"  📊 DB-部门列: {len(dept_values)} 行")
+
 # 建立列名到索引的映射
 col_idx = {h: i for i, h in enumerate(headers)}
 
 # ===== 解析 bug 数据（在 Python 中计算公式列）=====
-def parse_bugs_from_rows(data_rows, headers, person_mapping):
-    """从原始行数据解析 bug 列表，在 Python 中计算所有公式列"""
+def parse_bugs_from_rows(data_rows, headers, person_mapping, dept_values=None, task_status_values=None, di_values=None):
+    """从原始行数据解析 bug 列表，优先使用表格公式列的值"""
     col = {h: i for i, h in enumerate(headers)}
     bugs = []
 
-    for row in data_rows:
+    for row_idx, row in enumerate(data_rows):
         if not row or not any(row):
             continue
 
@@ -319,31 +347,46 @@ def parse_bugs_from_rows(data_rows, headers, person_mapping):
         except (ValueError, TypeError):
             reopen_count = 0
 
-        # === 计算 DB-BUG等级 (列 O) ===
+        # === 计算 DB-BUG等级 (列 Q) ===
         level_map = {"非常紧急": "P0", "P0": "P0", "紧急": "P1", "P1": "P1",
                      "普通": "P2", "P2": "P2", "较低": "P3", "P3": "P3"}
         db_bug_level = level_map.get(bug_level, "")
 
-        # === 计算 DB-DI值 (列 P) ===
-        di_map = {"P0": 10, "P1": 3, "P2": 1, "P3": 0.1}
-        weight = di_map.get(db_bug_level, 0)
+        # === DB-DI值：优先使用表格公式列 R ===
+        if di_values and row_idx < len(di_values) and di_values[row_idx]:
+            try:
+                weight = float(str(di_values[row_idx]).strip())
+            except (ValueError, TypeError):
+                di_map = {"P0": 10, "P1": 3, "P2": 1, "P3": 0.1}
+                weight = di_map.get(db_bug_level, 0)
+        else:
+            di_map = {"P0": 10, "P1": 3, "P2": 1, "P3": 0.1}
+            weight = di_map.get(db_bug_level, 0)
 
-        # === 计算 DB-角色 和 DB-部门 (列 R, S) ===
+        # === 计算 DB-角色 和 DB-部门 ===
         person_info = person_mapping.get(assignee, {})
         raw_role = person_info.get("role", "")
         raw_dept = person_info.get("dept", "")
         db_role = _normalize_role(raw_role)
-        db_dept = _normalize_dept(raw_dept)
-
-        # === 计算 DB-任务状态 (列 M) ===
-        if status in ("已关闭", "不予解决", "非问题关闭"):
-            db_task_status = "已关闭"
-        elif status in ("外部问题", "设计如此", "重复问题", "无法重现", "回归验证", "已解决"):
-            db_task_status = "待回归"
-        elif status in ("挂起", "重复打开", "修复中", "激活", "待处理", "重新打开"):
-            db_task_status = "待处理"
+        # 优先使用表格公式列的 DB-部门（U列），确保与表格筛选结果一致
+        if dept_values and row_idx < len(dept_values) and dept_values[row_idx]:
+            db_dept = _normalize_dept(str(dept_values[row_idx]).strip())
         else:
-            db_task_status = status
+            db_dept = _normalize_dept(raw_dept)
+
+        # === DB-任务状态：优先使用表格公式列 O ===
+        if task_status_values and row_idx < len(task_status_values) and task_status_values[row_idx]:
+            db_task_status = str(task_status_values[row_idx]).strip()
+        else:
+            # 回退：从原始任务状态映射
+            if status in ("已关闭", "不予解决", "非问题关闭"):
+                db_task_status = "已关闭"
+            elif status in ("外部问题", "设计如此", "重复问题", "无法重现", "回归验证", "已解决"):
+                db_task_status = "待回归"
+            elif status in ("挂起", "重复打开", "修复中", "激活", "待处理", "重新打开"):
+                db_task_status = "待处理"
+            else:
+                db_task_status = status
 
         # === 解析日期 ===
         def parse_datetime_str(s):
@@ -421,7 +464,7 @@ def parse_bugs_from_rows(data_rows, headers, person_mapping):
     return bugs
 
 
-all_bugs_raw = parse_bugs_from_rows(data_rows, headers, person_mapping)
+all_bugs_raw = parse_bugs_from_rows(data_rows, headers, person_mapping, dept_values, task_status_values, di_values)
 print(f"🐛 解析完成: {len(all_bugs_raw)} 条有效 bug")
 
 # 按项目分组
@@ -538,9 +581,8 @@ def calc_trend(all_bugs):
             if b["db_dept"] != "AIOT":
                 continue
             all_bug_list.append(b)
-            status = b["status"]
-            # 每日解决: DB-任务状态为已关闭，以解决时间为维度
-            if b["db_task_status"] == "已关闭" and b["_resolved_dt"]:
+            # 每日解决: DB-任务状态为待回归或已关闭，以解决时间为维度
+            if b["db_task_status"] in ("待回归", "已关闭") and b["_resolved_dt"]:
                 d = b["_resolved_dt"].strftime("%m-%d")
                 if d in date_set:
                     daily_resolved[d] += b["rawWeight"]
@@ -550,18 +592,16 @@ def calc_trend(all_bugs):
                 if d in date_set:
                     daily_new[d] += b["rawWeight"]
     
-    # OPEN DI 趋势：最新天用 bug 数据直接计算，历史天用倒推公式
-    # OPEN_DI(D) = OPEN_DI(D+1) - NEW(D+1) + RESOLVED(D+1)
-    # 确保三个指标（OPEN DI、每日新增、每日解决）始终一致
-    today_open_di = sum(b["openDI"] for b in all_bug_list)
-    
+    # OPEN DI 趋势：截止到每天的累计值
+    # OPEN_DI(D) = 所有创建时间 ≤ D 且当前状态为待处理/待回归的 bug 的 DI 合计
     cum_list = [0.0] * len(dates)
-    cum_list[-1] = today_open_di  # 最新天
-    for i in range(len(dates) - 2, -1, -1):
-        next_date_str = dates[i + 1]
-        cum_list[i] = cum_list[i + 1] - daily_new.get(next_date_str, 0) + daily_resolved.get(next_date_str, 0)
-    
-    cum_list = [round(v, 1) for v in cum_list]
+    for i, d in enumerate(dates):
+        d_date = datetime.strptime(d, "%m-%d").replace(year=now.year)
+        total = 0.0
+        for b in all_bug_list:
+            if b["_created_dt"] and b["_created_dt"] <= d_date and b["db_task_status"] in ("待处理", "待回归"):
+                total += b["rawWeight"]
+        cum_list[i] = round(total, 1)
     
     return dates, cum_list, [round(daily_new.get(d, 0), 1) for d in dates], [round(daily_resolved.get(d, 0), 1) for d in dates]
 
@@ -583,12 +623,11 @@ def calc_single_project_trend(bugs):
     daily_new = defaultdict(float)
     daily_resolved = defaultdict(float)
     
-    for b in bugs:
-        if b["db_dept"] != "AIOT":
-            continue
-        status = b["status"]
-        # 每日解决: DB-任务状态为已关闭，以解决时间为维度
-        if b["db_task_status"] == "已关闭" and b["_resolved_dt"]:
+    aiot_bugs = [b for b in bugs if b["db_dept"] == "AIOT"]
+    
+    for b in aiot_bugs:
+        # 每日解决: DB-任务状态为待回归或已关闭，以解决时间为维度
+        if b["db_task_status"] in ("待回归", "已关闭") and b["_resolved_dt"]:
             d = b["_resolved_dt"].strftime("%m-%d")
             if d in date_set:
                 daily_resolved[d] += b["rawWeight"]
@@ -598,17 +637,15 @@ def calc_single_project_trend(bugs):
             if d in date_set:
                 daily_new[d] += b["rawWeight"]
     
-    # OPEN DI 趋势：最新天用 bug 数据直接计算，历史天用倒推公式
-    aiot_bugs = [b for b in bugs if b["db_dept"] == "AIOT"]
-    today_open_di = sum(b["openDI"] for b in aiot_bugs)
-    
+    # OPEN DI 趋势：截止到每天的累计值
     cum_list = [0.0] * len(dates)
-    cum_list[-1] = today_open_di
-    for i in range(len(dates) - 2, -1, -1):
-        next_date_str = dates[i + 1]
-        cum_list[i] = cum_list[i + 1] - daily_new.get(next_date_str, 0) + daily_resolved.get(next_date_str, 0)
-    
-    cum_list = [round(v, 1) for v in cum_list]
+    for i, d in enumerate(dates):
+        d_date = datetime.strptime(d, "%m-%d").replace(year=now.year)
+        total = 0.0
+        for b in aiot_bugs:
+            if b["_created_dt"] and b["_created_dt"] <= d_date and b["db_task_status"] in ("待处理", "待回归"):
+                total += b["rawWeight"]
+        cum_list[i] = round(total, 1)
     
     return cum_list, [round(daily_new.get(d, 0), 1) for d in dates], [round(daily_resolved.get(d, 0), 1) for d in dates]
 
