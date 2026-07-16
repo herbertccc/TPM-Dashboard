@@ -281,8 +281,8 @@ headers, data_rows = _dingtalk_read_large_sheet(
 )
 print(f"  📊 读取完成: {len(data_rows)} 行数据, 列: {headers}")
 
-# ===== 单独读取公式列: O(DB-任务状态), R(DB-DI值), U(DB-部门) =====
-print("📖 读取公式列 (O/R/U)...")
+# ===== 单独读取公式列: O(DB-任务状态), R(DB-DI值), T(DB-角色), U(DB-部门) =====
+print("📖 读取公式列 (O/R/T/U)...")
 
 def _read_single_col(col_letter, total_rows, chunk_size=1000):
     """读取单列数据，返回去掉表头后的值列表"""
@@ -309,11 +309,14 @@ print(f"  📊 DB-DI值列: {len(di_values)} 行")
 dept_values = _read_single_col('U', TOTAL_DATA_ROWS)
 print(f"  📊 DB-部门列: {len(dept_values)} 行")
 
+role_values = _read_single_col('T', TOTAL_DATA_ROWS)
+print(f"  📊 DB-角色列: {len(role_values)} 行")
+
 # 建立列名到索引的映射
 col_idx = {h: i for i, h in enumerate(headers)}
 
 # ===== 解析 bug 数据（在 Python 中计算公式列）=====
-def parse_bugs_from_rows(data_rows, headers, person_mapping, dept_values=None, task_status_values=None, di_values=None):
+def parse_bugs_from_rows(data_rows, headers, person_mapping, dept_values=None, task_status_values=None, di_values=None, role_values=None):
     """从原始行数据解析 bug 列表，优先使用表格公式列的值"""
     col = {h: i for i, h in enumerate(headers)}
     bugs = []
@@ -367,7 +370,11 @@ def parse_bugs_from_rows(data_rows, headers, person_mapping, dept_values=None, t
         person_info = person_mapping.get(assignee, {})
         raw_role = person_info.get("role", "")
         raw_dept = person_info.get("dept", "")
-        db_role = _normalize_role(raw_role)
+        # 优先使用表格公式列的 DB-角色（T列）
+        if role_values and row_idx < len(role_values) and role_values[row_idx]:
+            db_role = _normalize_role(str(role_values[row_idx]).strip())
+        else:
+            db_role = _normalize_role(raw_role)
         # 优先使用表格公式列的 DB-部门（U列），确保与表格筛选结果一致
         if dept_values and row_idx < len(dept_values) and dept_values[row_idx]:
             db_dept = _normalize_dept(str(dept_values[row_idx]).strip())
@@ -464,7 +471,7 @@ def parse_bugs_from_rows(data_rows, headers, person_mapping, dept_values=None, t
     return bugs
 
 
-all_bugs_raw = parse_bugs_from_rows(data_rows, headers, person_mapping, dept_values, task_status_values, di_values)
+all_bugs_raw = parse_bugs_from_rows(data_rows, headers, person_mapping, dept_values, task_status_values, di_values, role_values)
 print(f"🐛 解析完成: {len(all_bugs_raw)} 条有效 bug")
 
 # 按项目分组
@@ -921,7 +928,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",san
 .pp-name { width:100px; font-size:12px; font-weight:600; flex-shrink:0; }
 .pp-bars { flex:1; display:flex; flex-direction:column; gap:4px; }
 .pp-bar-line { display:flex; align-items:center; height:16px; width:100%; }
-.pp-bar-segment { height:100%; transition:width 0.3s; }
+.pp-bar-segment { height:100%; transition:width 0.3s; position:relative; overflow:hidden; }
 .pp-bar-solved { background:var(--green); }
 .pp-bar-open { background:var(--red); }
 .pp-reopen-bar { height:8px; background:var(--orange); border-radius:4px; }
@@ -1050,6 +1057,19 @@ function renderContent() {
   else if (currentPage === 'guide') main.innerHTML = renderGuide();
   else if (selectedProject) main.innerHTML = renderProjectDetail(selectedProject);
   setTimeout(initCharts, 50);
+  setTimeout(checkBarValueOverflow, 100);
+}
+
+function checkBarValueOverflow() {
+  var chart = document.getElementById('resourceDistChart');
+  if (!chart) return;
+  var segments = chart.querySelectorAll('.pp-bar-segment');
+  segments.forEach(function(seg) {
+    var val = seg.querySelector('.pp-bar-value');
+    if (val && val.offsetWidth > seg.offsetWidth) {
+      val.style.display = 'none';
+    }
+  });
 }
 
 function getHealthLabel(h) {
@@ -1495,9 +1515,8 @@ function renderHR() {
       var solvedDi = pData.solved[pn] || 0;
       if (solvedDi > 0) {
         var width = (solvedDi / maxDi * 100).toFixed(1);
-        var showVal = parseFloat(width) > 3;  // 降低阈值到3%
         segments += '<div class="pp-bar-segment" style="width:' + width + '%;background:' + projectColors[pn] + '">' +
-          (showVal ? '<span class="pp-bar-value">' + solvedDi.toFixed(1) + '</span>' : '') +
+          '<span class="pp-bar-value">' + solvedDi.toFixed(1) + '</span>' +
         '</div>';
       }
     });
@@ -1507,9 +1526,8 @@ function renderHR() {
       var unsolvedDi = pData.unsolved[pn] || 0;
       if (unsolvedDi > 0) {
         var width = (unsolvedDi / maxDi * 100).toFixed(1);
-        var showVal = parseFloat(width) > 3;  // 降低阈值到3%
         segments += '<div class="pp-bar-segment" style="width:' + width + '%;background:' + projectColors[pn] + ';opacity:0.6">' +
-          (showVal ? '<span class="pp-bar-value">' + unsolvedDi.toFixed(1) + '</span>' : '') +
+          '<span class="pp-bar-value">' + unsolvedDi.toFixed(1) + '</span>' +
         '</div>';
       }
     });
@@ -1567,7 +1585,7 @@ function renderHR() {
   }
 
   return sections +
-    '<div class="pp-chart"><div class="chart-title">资源分布</div>' +
+    '<div class="pp-chart" id="resourceDistChart"><div class="chart-title">资源分布</div>' +
     '<div class="pp-legend">' + legendItems + '</div>' +
     chartRows + '</div>' +
     reopenChart;
