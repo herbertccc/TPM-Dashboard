@@ -593,13 +593,17 @@ def calc_trend(all_bugs):
                     daily_new[d] += b["rawWeight"]
     
     # OPEN DI 趋势：截止到每天的累计值
-    # OPEN_DI(D) = 所有创建时间 ≤ D 且当前状态为待处理/待回归的 bug 的 DI 合计
+    # OPEN_DI(D) = 创建时间 ≤ D 且在该天尚未解决的 bug 的 DI 合计
+    # "尚未解决" = DB-任务状态为待处理/待回归（当前仍open），或解决时间 > D（当时还没解决）
     cum_list = [0.0] * len(dates)
     for i, d in enumerate(dates):
         d_date = datetime.strptime(d, "%m-%d").replace(year=now.year)
         total = 0.0
         for b in all_bug_list:
-            if b["_created_dt"] and b["_created_dt"] <= d_date and b["db_task_status"] in ("待处理", "待回归"):
+            if not b["_created_dt"] or b["_created_dt"] > d_date:
+                continue
+            # 当前仍open，或在该日期之后才解决
+            if b["db_task_status"] in ("待处理", "待回归") or (b["_resolved_dt"] and b["_resolved_dt"] > d_date):
                 total += b["rawWeight"]
         cum_list[i] = round(total, 1)
     
@@ -643,7 +647,9 @@ def calc_single_project_trend(bugs):
         d_date = datetime.strptime(d, "%m-%d").replace(year=now.year)
         total = 0.0
         for b in aiot_bugs:
-            if b["_created_dt"] and b["_created_dt"] <= d_date and b["db_task_status"] in ("待处理", "待回归"):
+            if not b["_created_dt"] or b["_created_dt"] > d_date:
+                continue
+            if b["db_task_status"] in ("待处理", "待回归") or (b["_resolved_dt"] and b["_resolved_dt"] > d_date):
                 total += b["rawWeight"]
         cum_list[i] = round(total, 1)
     
