@@ -380,8 +380,8 @@ def parse_bugs_from_rows(data_rows, headers, person_mapping):
         # === DI 计算 ===
         is_aiot = (db_dept == "AIOT")
         if is_aiot:
-            # OPEN DI: DB-任务状态为非"已关闭"时计入
-            open_di = weight if db_task_status != "已关闭" else 0
+            # OPEN DI: DB-任务状态为待处理或待回归时计入（不含已拒绝等其他状态）
+            open_di = weight if db_task_status in ("待处理", "待回归") else 0
             # 已解决DI: 状态为"已解决"或"已关闭"
             solved_di = weight if status in ("已解决", "已关闭", "已完成") else 0
             # 未解决DI: 状态非"已解决"/"已关闭"/"已完成"
@@ -527,7 +527,6 @@ def calc_trend(all_bugs):
     """计算所有项目聚合的近30天趋势"""
     now = datetime.now()
     dates = [(now - timedelta(days=i)).strftime("%m-%d") for i in range(29, -1, -1)]
-    date_objs = [(now - timedelta(days=i)).date() for i in range(29, -1, -1)]
     date_set = set(dates)
     daily_new = defaultdict(float)
     daily_resolved = defaultdict(float)
@@ -540,9 +539,8 @@ def calc_trend(all_bugs):
                 continue
             all_bug_list.append(b)
             status = b["status"]
-            # 每日解决: DB-任务状态为待回归或已关闭，以解决时间为维度
-            is_closed_like = (b["db_task_status"] in ("待回归", "已关闭"))
-            if is_closed_like and b["_resolved_dt"]:
+            # 每日解决: DB-任务状态为已关闭，以解决时间为维度
+            if b["db_task_status"] == "已关闭" and b["_resolved_dt"]:
                 d = b["_resolved_dt"].strftime("%m-%d")
                 if d in date_set:
                     daily_resolved[d] += b["rawWeight"]
@@ -552,49 +550,45 @@ def calc_trend(all_bugs):
                 if d in date_set:
                     daily_new[d] += b["rawWeight"]
     
-    # OPEN DI = 截止到当天，尚未关闭的 AIOT bug 的 DI 值之和
-    # 最新天直接使用 bug 的 openDI 字段（与项目统计 calc_stats 保持一致）
-    # 历史天用解决时间判断关闭状态
-    today_date = now.date()
-    cum_list = []
-    for d_str, d_date in zip(dates, date_objs):
-        open_di = 0.0
-        for b in all_bug_list:
-            if d_date == today_date:
-                # 最新天：直接使用预计算的 openDI（基于 db_task_status，与项目统计一致）
-                open_di += b["openDI"]
-            else:
-                # 历史天：判断该 bug 在日期 D 是否已关闭
-                if b["status"] in ("已关闭", "不予解决", "非问题关闭") and b["_resolved_dt"] and b["_resolved_dt"].date() <= d_date:
-                    continue
-                if b["_created_dt"] and b["_created_dt"].date() <= d_date:
-                    open_di += b["rawWeight"]
-        cum_list.append(round(open_di, 1))
+    # OPEN DI 趋势：最新天用 bug 数据直接计算，历史天用倒推公式
+    # OPEN_DI(D) = OPEN_DI(D+1) - NEW(D+1) + RESOLVED(D+1)
+    # 确保三个指标（OPEN DI、每日新增、每日解决）始终一致
+    today_open_di = sum(b["openDI"] for b in all_bug_list)
+    
+    cum_list = [0.0] * len(dates)
+    cum_list[-1] = today_open_di  # 最新天
+    for i in range(len(dates) - 2, -1, -1):
+        next_date_str = dates[i + 1]
+        cum_list[i] = cum_list[i + 1] - daily_new.get(next_date_str, 0) + daily_resolved.get(next_date_str, 0)
+    
+    cum_list = [round(v, 1) for v in cum_list]
     
     return dates, cum_list, [round(daily_new.get(d, 0), 1) for d in dates], [round(daily_resolved.get(d, 0), 1) for d in dates]
 
 
 trend_dates_str, cumulative_di, daily_new_di, daily_resolved_di = calc_trend(all_projects_bugs)
 
+# ===== OPEN DI 趋势诊断 =====
+print("\n📈 OPEN DI 趋势诊断（总览，AIOT部门）:")
+for i, (d, v) in enumerate(zip(trend_dates_str, cumulative_di)):
+    if d >= "07-10":
+        print(f"  {d}: OPEN DI={v}, 每日新增={daily_new_di[i]}, 每日解决={daily_resolved_di[i]}")
 
 # ===== 单项目趋势计算 =====
 def calc_single_project_trend(bugs):
     """计算单个项目的近30天趋势"""
     now = datetime.now()
     dates = [(now - timedelta(days=i)).strftime("%m-%d") for i in range(29, -1, -1)]
-    date_objs = [(now - timedelta(days=i)).date() for i in range(29, -1, -1)]
     date_set = set(dates)
     daily_new = defaultdict(float)
     daily_resolved = defaultdict(float)
-    today_date = now.date()
     
     for b in bugs:
         if b["db_dept"] != "AIOT":
             continue
         status = b["status"]
-        # 每日解决: DB-任务状态为待回归或已关闭，以解决时间为维度
-        is_closed_like = (b["db_task_status"] in ("待回归", "已关闭"))
-        if is_closed_like and b["_resolved_dt"]:
+        # 每日解决: DB-任务状态为已关闭，以解决时间为维度
+        if b["db_task_status"] == "已关闭" and b["_resolved_dt"]:
             d = b["_resolved_dt"].strftime("%m-%d")
             if d in date_set:
                 daily_resolved[d] += b["rawWeight"]
@@ -604,22 +598,17 @@ def calc_single_project_trend(bugs):
             if d in date_set:
                 daily_new[d] += b["rawWeight"]
     
-    cum_list = []
-    for d_str, d_date in zip(dates, date_objs):
-        open_di = 0.0
-        for b in bugs:
-            if b["db_dept"] != "AIOT":
-                continue
-            if d_date == today_date:
-                # 最新天：直接使用预计算的 openDI（与项目统计一致）
-                open_di += b["openDI"]
-            else:
-                # 历史天：判断该 bug 在日期 D 是否已关闭
-                if b["status"] in ("已关闭", "不予解决", "非问题关闭") and b["_resolved_dt"] and b["_resolved_dt"].date() <= d_date:
-                    continue
-                if b["_created_dt"] and b["_created_dt"].date() <= d_date:
-                    open_di += b["rawWeight"]
-        cum_list.append(round(open_di, 1))
+    # OPEN DI 趋势：最新天用 bug 数据直接计算，历史天用倒推公式
+    aiot_bugs = [b for b in bugs if b["db_dept"] == "AIOT"]
+    today_open_di = sum(b["openDI"] for b in aiot_bugs)
+    
+    cum_list = [0.0] * len(dates)
+    cum_list[-1] = today_open_di
+    for i in range(len(dates) - 2, -1, -1):
+        next_date_str = dates[i + 1]
+        cum_list[i] = cum_list[i + 1] - daily_new.get(next_date_str, 0) + daily_resolved.get(next_date_str, 0)
+    
+    cum_list = [round(v, 1) for v in cum_list]
     
     return cum_list, [round(daily_new.get(d, 0), 1) for d in dates], [round(daily_resolved.get(d, 0), 1) for d in dates]
 
