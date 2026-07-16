@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'build_dashboard.py'
+      - 'index.html'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
@@ -52,6 +53,3 @@ jobs:
       - name: 部署到 GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-      - name: 钉钉群通知
-        run: python notify_dingtalk.py "${{ steps.deployment.outputs.page_url }}"
