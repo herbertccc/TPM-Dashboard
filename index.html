@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>AIoT软件质量</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js?v=20260716180329"></script>
+<style>
+:root { --bg:#f5f7fa; --sidebar-bg:#fff; --card-bg:#fff; --text:#1d2129; --text-secondary:#86909c; --border:#e5e6eb; --blue:#165dff; --red:#f53f3f; --green:#00b42a; --orange:#ff7d00; --yellow:#ffb400; --gray:#c9cdd4; --shadow:0 2px 8px rgba(0,0,0,0.06); --radius:10px; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif; background:var(--bg); display:flex; min-height:100vh; color:var(--text); }
+.sidebar { width:200px; background:var(--sidebar-bg); position:fixed; top:0; left:0; bottom:0; z-index:100; border-right:1px solid var(--border); display:flex; flex-direction:column; }
+.sidebar-header { padding:20px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+.sidebar-logo { width:28px; height:28px; background:linear-gradient(135deg,#165dff,#722ed1); border-radius:6px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; font-weight:800; flex-shrink:0; }
+.sidebar-title { font-size:15px; font-weight:700; }
+.nav-menu { list-style:none; padding:12px 0; flex:1; overflow-y:auto; }
+.nav-item { padding:10px 16px; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-secondary); border-left:3px solid transparent; margin:2px 0; }
+.nav-item:hover { background:#f2f3f5; color:var(--text); }
+.nav-item.active { background:rgba(22,93,255,0.06); color:var(--blue); border-left-color:var(--blue); font-weight:600; }
+.nav-sub-item { padding:8px 16px 8px 36px; cursor:pointer; transition:all 0.2s; font-size:13px; color:var(--text-secondary); display:flex; align-items:center; border-left:3px solid transparent; margin:1px 0; }
+.nav-sub-item:hover { background:#f2f3f5; color:var(--text); }
+.nav-sub-item.active { background:rgba(22,93,255,0.06); color:var(--blue); border-left-color:var(--blue); font-weight:600; }
+.di-tag { font-size:11px; padding:2px 8px; border-radius:10px; font-weight:600; margin-left:auto; min-width:40px; text-align:center; }
+.di-tag.danger { background:#fff2f0; color:var(--red); }
+.main { margin-left:200px; flex:1; padding:28px 32px; min-width:0; }
+.page-header { margin-bottom:24px; }
+.page-title { font-size:22px; font-weight:700; margin-bottom:4px; }
+.page-desc { font-size:13px; color:var(--text-secondary); }
+.cards-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; margin-bottom:24px; }
+.stat-card { background:var(--card-bg); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow); cursor:pointer; border:2px solid transparent; transition:all 0.2s; position:relative; }
+.stat-card:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,0.1); }
+.stat-card.selected { border-color:var(--blue); }
+.health-badge { position:absolute; top:12px; right:12px; font-size:11px; padding:3px 10px; border-radius:12px; font-weight:600; }
+.health-badge.normal { background:#e8ffea; color:var(--green); }
+.health-badge.warning { background:#fff7e6; color:var(--orange); }
+.health-badge.danger { background:#fff2f0; color:var(--red); }
+.card-label { font-size:13px; color:var(--text-secondary); margin-bottom:6px; padding-right:60px; }
+.kpi-value { font-size:15px; font-weight:700; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+.chart-container { background:var(--card-bg); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow); margin-bottom:24px; }
+.chart-title { font-size:15px; font-weight:600; margin-bottom:14px; }
+.chart-area { width:100%; height:320px; }
+.timeline-section { background:var(--card-bg); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow); margin-bottom:24px; position:relative; }
+.tl-reset-btn { padding:5px 14px; font-size:12px; font-weight:600; color:var(--blue); background:#fff; border:1px solid var(--blue); border-radius:6px; cursor:pointer; transition:all 0.15s; }
+.tl-reset-btn:hover { background:var(--blue); color:#fff; }
+.tl-timeline-wrap { display:flex; flex-direction:column; gap:0; margin-top:8px; }
+.tl-header-row { overflow-x:hidden; overflow-y:hidden; flex-shrink:0; background:#fafbfc; }
+.tl-viewport { flex:1; display:flex; overflow:hidden; position:relative; background:#fafbfc; min-width:0; }
+.tl-nav-btn { flex-shrink:0; width:32px; display:flex; align-items:center; justify-content:center; background:#f7f8fa; border:1px solid var(--border); cursor:pointer; color:var(--text-secondary); font-size:18px; transition:all 0.15s; user-select:none; }
+.tl-nav-btn:hover { background:#eef1f6; color:var(--text); }
+.tl-nav-btn.left { border-radius:8px 0 0 8px; border-right:none; }
+.tl-nav-btn.right { border-radius:0 8px 8px 0; border-left:none; }
+.tl-names-col { width:110px; flex-shrink:0; overflow-y:auto; overflow-x:hidden; border-right:1px solid var(--border); background:#fff; z-index:3; }
+.tl-scroll-area { flex:1; overflow-x:hidden; overflow-y:hidden; cursor:grab; }
+.tl-timeline-body { position:relative; padding-bottom:22px; }
+.tl-day-cols { display:flex; }
+.tl-day-col { flex-shrink:0; border-right:1px solid #f0f1f3; }
+.tl-day-col.today-col { background:rgba(255,125,0,0.04); }
+.tl-day-label { height:24px; display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--text-secondary); border-bottom:2px solid var(--border); position:relative; }
+.tl-day-col.today-col .tl-day-label { color:var(--orange); font-weight:700; }
+.tl-day-body { position:relative; }
+.tl-today-line { position:absolute; top:0; bottom:0; width:2px; background:rgba(255,152,0,0.35); z-index:2; pointer-events:none; }
+.tl-today-label { position:absolute; bottom:-18px; left:50%; transform:translateX(-50%); font-size:11px; color:var(--orange); font-weight:700; white-space:nowrap; }
+.tl-today-top-label { position:absolute; top:4px; left:50%; transform:translateX(-50%); font-size:11px; color:var(--orange); font-weight:700; white-space:nowrap; background:rgba(255,255,255,0.85); padding:1px 6px; border-radius:3px; }
+.tl-project-row { margin-bottom:24px; }
+.tl-project-row:last-child { margin-bottom:0; }
+.tl-names-col .tl-project-name { font-size:13px; font-weight:700; color:var(--text); padding:0 12px; position:absolute; top:6px; left:0; right:0; }
+.tl-names-col .tl-name-spacer { height:2px; }
+.tl-names-col .tl-name-track { height:14px; position:relative; }
+.tl-names-col .tl-name-card-area { }
+.tl-track { position:relative; height:14px; }
+.tl-track::before { content:''; position:absolute; top:6px; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--border) 0%,#d5d8de 50%,var(--border) 100%); border-radius:1px; }
+.tl-dot { position:absolute; top:0; width:14px; height:14px; border-radius:50%; background:var(--blue); border:2.5px solid #fff; box-shadow:0 1px 4px rgba(22,93,255,0.3); transform:translateX(-50%); z-index:2; transition:transform 0.15s; }
+.tl-dot:hover { transform:translateX(-50%) scale(1.2); }
+.tl-dot.pass { background:var(--green); box-shadow:0 1px 4px rgba(0,180,42,0.3); }
+.tl-dot.delay { background:var(--red); box-shadow:0 1px 4px rgba(245,63,63,0.3); }
+.tl-dot.progress { background:var(--orange); box-shadow:0 1px 4px rgba(255,125,0,0.3); }
+.tl-card-area { position:relative; }
+.tl-card { position:absolute; transform:translateX(-50%); background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px 16px; min-width:150px; max-width:210px; z-index:2; box-shadow:0 2px 8px rgba(0,0,0,0.06); transition:box-shadow 0.2s,transform 0.15s; }
+.tl-card:hover { box-shadow:0 4px 16px rgba(0,0,0,0.12); transform:translateX(-50%) translateY(-2px); }
+.tl-card-name { font-size:13px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.tl-card-item { font-size:11px; color:var(--text-secondary); margin-bottom:4px; line-height:1.5; }
+.tl-card-risk { font-size:11px; color:var(--red); line-height:1.5; margin-bottom:6px; }
+.tl-card-status { display:inline-block; padding:2px 10px; border-radius:4px; font-size:11px; font-weight:700; }
+.tl-card-status.pass { background:#e8ffea; color:#00b42a; }
+.tl-card-status.delay { background:#fff2f0; color:#f53f3f; }
+.tl-card-status.progress { background:#fff7e6; color:#ff7d00; }
+.tl-card-status.default { background:#f2f3f5; color:var(--text-secondary); }
+.tl-card-date { font-size:10px; color:var(--text-secondary); margin-bottom:4px; }
+.tl-connector { position:absolute; width:1px; background:linear-gradient(180deg,var(--border) 0%,rgba(229,230,235,0.3) 100%); z-index:1; }
+.role-section { margin-bottom:24px; }
+.role-title { font-size:15px; font-weight:700; margin-bottom:12px; padding-left:12px; border-left:3px solid var(--blue); }
+.hr-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; }
+.hr-card { background:var(--card-bg); border-radius:var(--radius); padding:14px; box-shadow:var(--shadow); }
+.hr-name { font-size:13px; font-weight:600; margin-bottom:8px; }
+.hr-stats { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+.hr-stat { font-size:11px; color:var(--text-secondary); }
+.hr-stat span { color:var(--text); font-weight:600; display:block; font-size:13px; }
+.pp-chart { background:var(--card-bg); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow); margin-bottom:24px; overflow-x:auto; }
+.pp-row { display:flex; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); min-width:600px; }
+.pp-row:last-child { border-bottom:none; }
+.pp-name { width:100px; font-size:12px; font-weight:600; flex-shrink:0; }
+.pp-bars { flex:1; display:flex; flex-direction:column; gap:4px; }
+.pp-bar-line { display:flex; align-items:center; height:16px; width:100%; }
+.pp-bar-segment { height:100%; transition:width 0.3s; position:relative; overflow:hidden; }
+.pp-bar-solved { background:var(--green); }
+.pp-bar-open { background:var(--red); }
+.pp-reopen-bar { height:8px; background:var(--orange); border-radius:4px; }
+.pp-legend { display:flex; gap:16px; margin-bottom:12px; font-size:12px; }
+.pp-legend span { display:flex; align-items:center; gap:4px; }
+.pp-legend i { width:12px; height:12px; border-radius:2px; display:inline-block; }
+.pp-vals { font-size:11px; display:flex; gap:8px; flex-shrink:0; margin-left:8px; white-space:nowrap; }
+.pp-bar-value { position:absolute; left:4px; top:50%; transform:translateY(-50%); font-size:10px; color:#fff; font-weight:600; white-space:nowrap; line-height:1; text-shadow:0 0 3px rgba(0,0,0,0.3); }
+.pp-bar-sla { margin-left:8px; font-size:11px; color:var(--text-secondary); white-space:nowrap; flex-shrink:0; }
+.back-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; background:var(--blue); color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:13px; margin-bottom:18px; }
+.back-btn:hover { opacity:0.9; }
+.person-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; margin-bottom:24px; }
+.person-card { background:var(--card-bg); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow); overflow:hidden; min-width:0; }
+.person-name { font-size:15px; font-weight:700; margin-bottom:8px; color:var(--text); }
+.person-stats { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; }
+.person-stat { color:var(--text-secondary); white-space:nowrap; }
+.person-stat b { color:var(--text); font-weight:600; }
+.hr-table-wrap { background:#fff; border-radius:12px; overflow:hidden; box-shadow:var(--shadow); margin-bottom:24px; }
+.hr-table-header { padding:16px 20px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); }
+.hr-table-header-dot { width:8px; height:8px; border-radius:50%; background:var(--blue); }
+.hr-table-header-title { font-size:16px; font-weight:700; color:var(--text); }
+.hr-table-header-count { font-size:12px; color:var(--text-secondary); background:#f2f3f5; padding:2px 10px; border-radius:10px; }
+.hr-table { width:100%; border-collapse:collapse; }
+.hr-table thead th { padding:12px 16px; font-size:12px; font-weight:600; color:var(--text-secondary); text-align:center; background:#fafbfc; border-bottom:2px solid var(--border); text-transform:uppercase; letter-spacing:0.5px; }
+.hr-table thead th:first-child { text-align:left; padding-left:20px; }
+.hr-table tbody tr { transition:background 0.15s; }
+.hr-table tbody tr:nth-child(even) { background:#fafbfc; }
+.hr-table tbody tr:hover { background:#f0f4ff; }
+.hr-table tbody td { padding:12px 16px; font-size:13px; text-align:center; border-bottom:1px solid #f0f1f3; }
+.hr-table tbody td:first-child { text-align:left; padding-left:20px; }
+.hr-table tbody tr:last-child td { border-bottom:none; }
+.hr-table tbody tr.hr-dept-divider td { padding:0; border-bottom:none; background:#fff; }
+.hr-table tbody tr.hr-dept-divider:hover { background:#fff; }
+.hr-pill { display:inline-block; padding:2px 10px; border-radius:10px; font-size:12px; font-weight:600; }
+.hr-metric { display:flex; flex-direction:column; align-items:center; gap:2px; }
+.hr-metric-val { font-weight:700; font-size:14px; }
+.hr-metric-sub { font-size:11px; color:var(--text-secondary); }
+.ranking-section { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:24px; }
+.ranking-col { background:var(--card-bg); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow); }
+.ranking-col-title { font-size:15px; font-weight:600; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+.ranking-col-title .ranking-icon { width:24px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; color:#fff; }
+.ranking-item { display:flex; align-items:center; padding:12px 14px; border-radius:8px; margin-bottom:8px; background:#fafbfc; transition:all 0.15s; }
+.ranking-item:hover { background:#f0f4ff; transform:translateX(2px); }
+.ranking-item:last-child { margin-bottom:0; }
+.ranking-num { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#fff; flex-shrink:0; margin-right:12px; }
+.ranking-num.r1 { background:linear-gradient(135deg,#f53f3f,#ff7d00); }
+.ranking-num.r2 { background:linear-gradient(135deg,#ff7d00,#ffb400); }
+.ranking-num.r3 { background:linear-gradient(135deg,#165dff,#722ed1); }
+.ranking-info { flex:1; min-width:0; }
+.ranking-name { font-size:13px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.ranking-metrics { display:flex; gap:10px; flex-wrap:wrap; font-size:11px; color:var(--text-secondary); }
+.ranking-metrics span { white-space:nowrap; }
+.ranking-metrics b { color:var(--text); font-weight:600; }
+.ranking-badge { flex-shrink:0; margin-left:10px; padding:3px 10px; border-radius:10px; font-size:12px; font-weight:700; }
+@media (max-width:900px) { .ranking-section { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <div class="sidebar-header"><img src="data:image/png;base64,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" style="width:28px;height:28px;border-radius:6px;margin-right:8px"><div class="sidebar-title">AIoT软件质量</div></div>
+  <ul class="nav-menu" id="navMenu"></ul>
+</div>
+<div class="main" id="mainContent"></div>
+<script>
+var BUILD_TS="20260716180329";
+console.log('[DEBUG] JS开始执行');
+
+// === 手机端检测：提示使用PC端打开 ===
+(function() {
+  var isMobile = /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+  if (isMobile) {
+    var overlay = document.createElement('div');
+    overlay.id = 'mobileBlockOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#fff;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;';
+    overlay.innerHTML = '<div style="font-size:48px;margin-bottom:24px">&#128187;</div>' +
+      '<div style="font-size:20px;font-weight:700;color:#1d2129;margin-bottom:12px">请使用PC端打开</div>' +
+      '<div style="font-size:14px;color:#86909c;line-height:1.8;max-width:280px">本看板包含复杂图表和时间线视图，手机端无法正常展示。<br>请在电脑浏览器中打开此链接。</div>';
+    document.addEventListener('DOMContentLoaded', function() { document.body.appendChild(overlay); });
+  }
+})();
+// === DATA-START (auto-generated by build-dashboard-data.ps1 — do not edit) ===
+const PROJECTS_DATA = {"E1W":{"stats":{"total":1,"resolved":0,"open_di":550,"sla":0,"block":0,"resolve_rate":"0.0","health":"normal","pending_regression":0}},"WR02SE":{"stats":{"total":450,"resolved":443,"open_di":3332,"sla":5,"block":0,"resolve_rate":"98.4","health":"danger","pending_regression":0}}};
+const TREND_DATES = ["07-04","07-05","07-06","07-07","07-08","07-09","07-10","07-11","07-12","07-13","07-14","07-15","07-16","07-17","07-18","07-19","07-20","07-21","07-22","07-23","07-24","07-25","07-26","07-27","07-28","07-29","07-30","07-31","08-01","08-02"];
+const CUMULATIVE_DI = [24750.0,24750.0,27519.0,28104.0,30449.0,30453.0,30453.0,30453.0,30453.0,29279.0,31740.0,35338.0,36413.0,31900.0,32909.0,32909.0,30785.0,29846.0,28051.0,22710.0,21733.0,21733.0,22276.0,21199.0,21746.0,21318.0,21866.0,21331.0,21331.0,21331.0];
+const DAILY_NEW = [0.0,0.0,2769.0,931.0,2345.0,472.0,0.0,0.0,0.0,4293.0,3395.0,4437.0,1998.0,1005.0,1009.0,0.0,2540.0,6198.0,2625.0,3717.0,4308.0,0.0,543.0,1089.0,1093.0,0.0,1097.0,550.0,0.0,0.0];
+const DAILY_RESOLVED = [0.0,0.0,0.0,346.0,0.0,468.0,0.0,0.0,0.0,5467.0,934.0,839.0,923.0,5518.0,0.0,0.0,4664.0,7137.0,4420.0,9058.0,5285.0,0.0,0.0,2166.0,546.0,428.0,549.0,1085.0,0.0,0.0];
+const MILESTONES = {"N32-P":[{"date":"2026-07-14","name":"T0上线","item":"","status":"进行中","risk":""},{"date":"2026-08-03","name":"T1上线","item":"","status":"进行中","risk":""},{"date":"2026-09-02","name":"T2上线","item":"","status":"进行中","risk":""},{"date":"2026-10-15","name":"PP上线","item":"","status":"进行中","risk":""},{"date":"2026-11-17","name":"MP上线","item":"","status":"进行中","risk":""}],"S51-A":[{"date":"2026-07-07","name":"V1手板","item":"","status":"进行中","risk":""},{"date":"2026-08-13","name":"V2手板","item":"","status":"进行中","risk":""},{"date":"2026-10-20","name":"T0上线","item":"","status":"进行中","risk":""},{"date":"2026-11-19","name":"T1上线","item":"","status":"进行中","risk":""},{"date":"2026-12-28","name":"PP上线","item":"","status":"进行中","risk":""},{"date":"2026-01-21","name":"MP上线","item":"","status":"进行中","risk":""}],"E50-A/E51-A":[{"date":"2026-07-23","name":"V2手板","item":"","status":"进行中","risk":""},{"date":"2026-09-11","name":"T0上线","item":"","status":"进行中","risk":""},{"date":"2026-09-28","name":"T1上线","item":"","status":"进行中","risk":""},{"date":"2026-11-04","name":"T2上线","item":"","status":"进行中","risk":""},{"date":"2026-12-01","name":"PP上线","item":"","status":"进行中","risk":""},{"date":"2026-12-21","name":"MP上线","item":"","status":"进行中","risk":""}],"N50-A":[{"date":"2026-07-24","name":"V2手板","item":"","status":"进行中","risk":""},{"date":"2026-10-09","name":"T0上线","item":"","status":"进行中","risk":""},{"date":"2026-10-27","name":"T1上线","item":"","status":"进行中","risk":""},{"date":"2026-11-26","name":"T2上线","item":"","status":"进行中","risk":""},{"date":"2026-12-23","name":"PP上线","item":"","status":"进行中","risk":""},{"date":"2026-01-18","name":"MP上线","item":"","status":"进行中","risk":""}],"B50-A/B51-A":[{"date":"2026-08-03","name":"V2手板","item":"","status":"进行中","risk":""},{"date":"2026-10-19","name":"T0上线","item":"","status":"进行中","risk":""},{"date":"2026-11-04","name":"T1上线","item":"","status":"进行中","risk":""},{"date":"2026-12-02","name":"T2上线","item":"","status":"进行中","risk":""},{"date":"2026-12-28","name":"PP上线","item":"","status":"进行中","risk":""},{"date":"2026-01-20","name":"MP上线","item":"","status":"进行中","risk":""},{"date":"2026-08-03","name":"V1手板","item":"","status":"进行中","risk":""},{"date":"2026-10-09","name":"T0上线","item":"","status":"进行中","risk":""},{"date":"2026-10-28","name":"T1上线","item":"","status":"进行中","risk":""},{"date":"2026-11-26","name":"PP上线","item":"","status":"进行中","risk":""},{"date":"2026-12-22","name":"MP上线","item":"","status":"进行中","risk":""}],"B30":[{"date":"2026-07-13","name":"PP量产","item":"","status":"进行中","risk":""},{"date":"2026-07-15","name":"RELEASE发版","item":"","status":"进行中","risk":""},{"date":"2026-07-20","name":"V3.5.0发布","item":"","status":"进行中","risk":""},{"date":"2026-08-06","name":"MP量产","item":"","status":"进行中","risk":""}]};
+const PERSON_STATS = [{"name":"Brian","role":"AIoT测试","dept":"AIOT","proj_contrib":{"WR02SE":{"solved_di":453,"open_di":0,"unsolved_di":0}},"proj_detail":{"WR02SE":{"total":1,"resolved":1,"reopen":0,"open_di":0,"pending_return_di":0,"pending_handle_di":0,"pending_handle_count":0,"pending_return_count":0,"sla":0,"sla_days_sum":0,"sla_days_count":0,"solved_chart_di":0,"unsolved_chart_di":0}},"total_open_di":0,"total_solved_di":453,"total_unsolved_di":0,"total_sla":0,"total_reopen":0,"resolved":1,"reopen":0,"solved_tickets":1,"total_tickets":1,"sla_days_sum":0,"sla_days_count":0},{"name":"Chris Xu","role":"AIoT测试","dept":"AIOT","proj_contrib":{"WR02SE":{"solved_di":0,"open_di":536,"unsolved_di":536}},"proj_detail":{"WR02SE":{"total":1,"resolved":0,"reopen":0,"open_di":536,"pending_return_di":0,"pending_handle_di":536,"pending_handle_count":1,"pending_return_count":0,"sla":0,"sla_days_sum":0,"sla_days_count":0,"solved_chart_di":0,"unsolved_chart_di":536}},"total_open_di":536,"total_solved_di":0,"total_unsolved_di":536,"total_sla":0,"total_reopen":0,"resolved":0,"reopen":0,"solved_tickets":0,"total_tickets":1,"sla_days_sum":0,"sla_days_count":0},{"name":"Gary","role":"AIoT测试","dept":"AIOT","proj_contrib":{"WR02SE":{"solved_di":73869,"open_di":0,"unsolved_di":0}},"proj_detail":{"WR02SE":{"total":190,"resolved":190,"reopen":0,"open_di":0,"pending_return_di":0,"pending_handle_di":0,"pending_handle_count":0,"pending_return_count":0,"sla":0,"sla_days_sum":0,"sla_days_count":0,"solved_chart_di":0,"unsolved_chart_di":0}},"total_open_di":0,"total_solved_di":73869,"total_unsolved_di":0,"total_sla":0,"total_reopen":42,"resolved":190,"reopen":42,"solved_tickets":190,"total_tickets":190,"sla_days_sum":0,"sla_days_count":0},{"name":"Gav","role":"AIoT测试","dept":"AIOT","proj_contrib":{"WR02SE":{"solved_di":0,"open_di":530,"unsolved_di":530}},"proj_detail":{"WR02SE":{"total":1,"resolved":0,"reopen":0,"open_di":530,"pending_return_di":0,"pending_handle_di":530,"pending_handle_count":1,"pending_return_count":0,"sla":1,"sla_days_sum":3,"sla_days_count":1,"solved_chart_di":0,"unsolved_chart_di":530}},"total_open_di":530,"total_solved_di":0,"total_unsolved_di":530,"total_sla":1,"total_reopen":0,"resolved":0,"reopen":0,"solved_tickets":0,"total_tickets":1,"sla_days_sum":3,"sla_days_count":1},{"name":"Glen","role":"AIoT测试","dept":"AIOT","proj_contrib":{"WR02SE":{"solved_di":0,"open_di":1056,"unsolved_di":1056}},"proj_detail":{"WR02SE":{"total":2,"resolved":0,"reopen":0,"open_di":1056,"pending_return_di":0,"pending_handle_di":1056,"pending_handle_count":2,"pending_return_count":0,"sla":2,"sla_days_sum":4,"sla_days_count":2,"solved_chart_di":0,"unsolved_chart_di":1056}},"total_open_di":1056,"total_solved_di":0,"total_unsolved_di":1056,"total_sla":2,"total_reopen":0,"resolved":0,"reopen":0,"solved_tickets":0,"total_tickets":2,"sla_days_sum":4,"sla_days_count":2},{"name":"Ivan He","role":"AIoT测试","dept":"AIOT","proj_contrib":{"WR02SE":{"solved_di":0,"open_di":950,"unsolved_di":950}},"proj_detail":{"WR02SE":{"total":2,"resolved":0,"reopen":0,"open_di":950,"pending_return_di":0,"pending_handle_di":950,"pending_handle_count":2,"pending_return_count":0,"sla":1,"sla_days_sum":26,"sla_days_count":1,"solved_chart_di":0,"unsolved_chart_di":950}},"total_open_di":950,"total_solved_di":0,"total_unsolved_di":950,"total_sla":1,"total_reopen":2,"resolved":0,"reopen":2,"solved_tickets":0,"total_tickets":2,"sla_days_sum":26,"sla_days_count":1},{"name":"Kevin","role":"AIoT测试","dept":"AIOT","proj_contrib":{"E1W":{"solved_di":0,"open_di":550,"unsolved_di":550},"WR02SE":{"solved_di":266,"open_di":260,"unsolved_di":260}},"proj_detail":{"E1W":{"total":1,"resolved":0,"reopen":0,"open_di":550,"pending_return_di":0,"pending_handle_di":550,"pending_handle_count":1,"pending_return_count":0,"sla":0,"sla_days_sum":0,"sla_days_count":0,"solved_chart_di":0,"unsolved_chart_di":550},"WR02SE":{"total":2,"resolved":1,"reopen":0,"open_di":260,"pending_return_di":0,"pending_handle_di":260,"pending_handle_count":1,"pending_return_count":0,"sla":1,"sla_days_sum":53,"sla_days_count":1,"solved_chart_di":0,"unsolved_chart_di":260}},"total_open_di":810,"total_solved_di":266,"total_unsolved_di":810,"total_sla":1,"total_reopen":3,"resolved":1,"reopen":3,"solved_tickets":1,"total_tickets":3,"sla_days_sum":53,"sla_days_count":1},{"name":"Tina. huang","role":"AIoT开发","dept":"AIOT","proj_contrib":{"WR02SE":{"solved_di":68105,"open_di":0,"unsolved_di":0}},"proj_detail":{"WR02SE":{"total":251,"resolved":251,"reopen":0,"open_di":0,"pending_return_di":0,"pending_handle_di":0,"pending_handle_count":0,"pending_return_count":0,"sla":0,"sla_days_sum":0,"sla_days_count":0,"solved_chart_di":0,"unsolved_chart_di":0}},"total_open_di":0,"total_solved_di":68105,"total_unsolved_di":0,"total_sla":0,"total_reopen":62,"resolved":251,"reopen":62,"solved_tickets":251,"total_tickets":251,"sla_days_sum":0,"sla_days_count":0}];
+const PROJECT_NAMES = ["E1W","WR02SE"];
+const PROJECT_TRENDS = {"E1W":[[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,550.0,550.0,550.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,550.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]],"WR02SE":[[24750.0,24750.0,27519.0,28104.0,30449.0,30453.0,30453.0,30453.0,30453.0,29279.0,31740.0,35338.0,36413.0,31900.0,32909.0,32909.0,30785.0,29846.0,28051.0,22710.0,21733.0,21733.0,22276.0,21199.0,21746.0,21318.0,21866.0,20781.0,20781.0,20781.0],[0.0,0.0,2769.0,931.0,2345.0,472.0,0.0,0.0,0.0,4293.0,3395.0,4437.0,1998.0,1005.0,1009.0,0.0,2540.0,6198.0,2625.0,3717.0,4308.0,0.0,543.0,1089.0,1093.0,0.0,1097.0,0.0,0.0,0.0],[0.0,0.0,0.0,346.0,0.0,468.0,0.0,0.0,0.0,5467.0,934.0,839.0,923.0,5518.0,0.0,0.0,4664.0,7137.0,4420.0,9058.0,5285.0,0.0,0.0,2166.0,546.0,428.0,549.0,1085.0,0.0,0.0]]};
+const VERSION_PLAN = [{"date":"2026-08-20","name":"8月版本计划"},{"date":"2026-07-20","name":"7月版本计划"},{"date":"2026-07-02","name":"6月版本计划"},{"date":"2026-06-11","name":"5月版本计划"}];
+// === DATA-END ===
+console.log('[DEBUG] 常量定义完成, 项目数:', Object.keys(PROJECTS_DATA).length);
+
+let currentPage = 'overview';
+let selectedProject = null;
+
+function renderNav() {
+  const menu = document.getElementById('navMenu');
+  let html = '<li class="nav-item active" data-page="overview" onclick="switchPage(\'overview\')"> 项目总览</li>';
+  var sortedProjects = PROJECT_NAMES.slice().sort(function(a, b) {
+    return PROJECTS_DATA[b].stats.open_di - PROJECTS_DATA[a].stats.open_di;
+  });
+  sortedProjects.forEach(function(p) {
+    var s = PROJECTS_DATA[p].stats;
+    var tagClass = s.health === 'normal' ? '' : s.health === 'warning' ? ' danger' : ' danger';
+    var tagColor = s.health === 'normal' ? '#00b42a' : s.health === 'warning' ? '#ff7d00' : '#f53f3f';
+    html += '<li class="nav-sub-item" data-project="' + p + '" onclick="switchPage(\'project\',\'' + p + '\')">' + p + ' <span class="di-tag' + tagClass + '" style="background:' + (s.health==='normal'?'#e8ffea':s.health==='warning'?'#fff7e6':'#fff2f0') + ';color:' + tagColor + '">' + s.open_di.toFixed(1) + '</span></li>';
+  });
+  html += '<li class="nav-item" data-page="hr" onclick="switchPage(\'hr\')"> 人力资源</li>';
+  html += '<li class="nav-item" data-page="timeline" onclick="switchPage(\'timeline\')"> 项目大盘</li>';
+  html += '<li class="nav-item" data-page="versionplan" onclick="switchPage(\'versionplan\')"> 版本计划</li>';
+  html += '<li class="nav-item" data-page="guide" onclick="switchPage(\'guide\')"> 看板说明</li>';
+  menu.innerHTML = html;
+}
+
+function switchPage(page, project) {
+  currentPage = page; selectedProject = project || null;
+  document.querySelectorAll('.nav-item,.nav-sub-item').forEach(function(el){ el.classList.remove('active'); });
+  if (page === 'overview') document.querySelector('[data-page="overview"]').classList.add('active');
+  else if (page === 'hr') document.querySelector('[data-page="hr"]').classList.add('active');
+  else if (page === 'timeline') document.querySelector('[data-page="timeline"]').classList.add('active');
+  else if (page === 'versionplan') document.querySelector('[data-page="versionplan"]').classList.add('active');
+  else if (page === 'guide') document.querySelector('[data-page="guide"]').classList.add('active');
+  else if (project) { var el = document.querySelector('[data-project="' + project + '"]'); if (el) el.classList.add('active'); }
+  renderContent();
+}
+
+function renderContent() {
+  var main = document.getElementById('mainContent');
+  if (currentPage === 'overview') main.innerHTML = renderOverview();
+  else if (currentPage === 'hr') main.innerHTML = renderHR();
+  else if (currentPage === 'timeline') main.innerHTML = renderTimelinePage();
+  else if (currentPage === 'versionplan') main.innerHTML = renderVersionPlan();
+  else if (currentPage === 'guide') main.innerHTML = renderGuide();
+  else if (selectedProject) main.innerHTML = renderProjectDetail(selectedProject);
+  setTimeout(initCharts, 50);
+  setTimeout(checkBarValueOverflow, 100);
+}
+
+function checkBarValueOverflow() {
+  var chart = document.getElementById('resourceDistChart');
+  if (!chart) return;
+  var segments = chart.querySelectorAll('.pp-bar-segment');
+  segments.forEach(function(seg) {
+    var val = seg.querySelector('.pp-bar-value');
+    if (val && val.offsetWidth > seg.offsetWidth) {
+      val.style.display = 'none';
+    }
+  });
+}
+
+function getHealthLabel(h) {
+  if (h === 'normal') return '<span class="health-badge normal">健康</span>';
+  if (h === 'warning') return '<span class="health-badge warning">一般</span>';
+  if (h === 'caution') return '<span class="health-badge" style="background:#fff2f0;color:#f53f3f">较差</span>';
+  return '<span class="health-badge" style="background:#f53f3f;color:#fff">严重</span>';
+}
+
+function buildRiskHtml(persons, s) {
+  // 风险识别仅分析AIOT部门人员，侧重SLA超时、BLOCK、OPEN DPI
+  var aiotPersons = persons.filter(function(p) { return p.dept === 'AIOT'; });
+  var risks = [];
+  if (s.block > 0) risks.push('当前存在 <b>' + s.block + '</b> 个BLOCK问题（高风险），直接影响版本发布节奏，建议优先排查并指定责任人限时关闭。');
+  if (s.sla > 0) risks.push('SLA超时 <b>' + s.sla + '</b> 个，高优先级问题处理速度不达标，可能导致交付延期或客户投诉升级。');
+  if (s.open_di > 1000) risks.push('项目OPEN DPI达 <b>' + s.open_di.toFixed(1) + '</b>，超出警戒线（1000），未解决质量风险偏高，需加大投入推进关闭。');
+  var highPressure = aiotPersons.filter(function(p) { return p.total >= 8 && p.openDI > 5; });
+  if (highPressure.length > 0) {
+    var names = highPressure.map(function(p) { return '<span style="color:var(--blue);font-weight:600">' + p.name + '</span>'; }).join('、');
+    risks.push('AIOT部门人员压力集中：' + names + ' 任务量大且未解决DPI较高，存在过载风险，建议适当分流或增援。');
+  }
+  var highSla = aiotPersons.filter(function(p) { return p.sla >= 3; });
+  if (highSla.length > 0) {
+    var names = highSla.map(function(p) { return '<span style="color:var(--blue);font-weight:600">' + p.name + '</span>'; }).join('、');
+    risks.push('AIOT部门SLA超时突出：' + names + ' 超时数量偏高，需关注处理时效和排期合理性。');
+  }
+  if (risks.length === 0) risks.push('当前AIOT部门各项指标正常，暂无明显风险。建议持续关注BLOCK和SLA变化。');
+  var html = '<div style="background:var(--card-bg);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);margin-bottom:24px"><div style="font-size:15px;font-weight:600;margin-bottom:4px">风险识别</div><div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">基于AIOT部门数据的智能风险分析</div>';
+  risks.forEach(function(r, idx) {
+    html += '<div style="padding:8px 0;font-size:13px;line-height:1.7">' +
+      '<span style="display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;background:#fff7e6;color:#ff7d00;border-radius:50%;font-size:12px;font-weight:700;margin-right:8px;vertical-align:middle">' + (idx+1) + '</span>' +
+      r + '</div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+function renderGuide() {
+  return '<div class="page-header"><div class="page-title">看板说明</div><div class="page-desc">页面功能、指标含义与计算方式说明</div></div>' +
+    '<div class="hr-table-wrap">' +
+      '<div class="hr-table-header"><div class="hr-table-header-dot"></div><div class="hr-table-header-title">一、看板结构</div></div>' +
+      '<table class="hr-table"><thead><tr><th style="width:140px">页面</th><th>说明</th></tr></thead><tbody>' +
+      '<tr><td>项目总览</td><td>所有项目的健康度汇总，包含OPEN DPI趋势图、风险识别和项目列表表单。点击子项目菜单可进入项目详情页。</td></tr>' +
+      '<tr><td>子项目详情</td><td>单个项目的OPEN DPI趋势、风险分析和人力视图。人力视图按DB-部门分组、按DB-角色排序展示。</td></tr>' +
+      '<tr><td>人力资源</td><td>全员效能总览，按DB-部门分组、DB-角色排序，含人员效能表、DPI效能分布柱状图和重开次数统计。</td></tr>' +
+      '<tr><td>项目大盘</td><td>各项目里程碑时间线视图，展示里程碑节点日期、状态和风险项，支持滚动和"回到当前"定位。</td></tr>' +
+      '<tr><td>版本计划</td><td>从钉钉在线表格《版本计划》读取各项目的版本开发计划，以卡片形式展示计划名称、概述和文档链接。</td></tr>' +
+      '</tbody></table></div>' +
+    '<div class="hr-table-wrap">' +
+      '<div class="hr-table-header"><div class="hr-table-header-dot"></div><div class="hr-table-header-title">二、核心指标说明</div></div>' +
+      '<table class="hr-table"><thead><tr><th style="width:140px">指标</th><th>计算方式</th></tr></thead><tbody>' +
+      '<tr><td>OPEN DPI</td><td>仅统计DB-部门=AIOT且任务状态≠已关闭的BUG，对其DB-DPI值求和。DPI值从钉钉在线表格《缺陷列表》data sheet的DPI值列直接读取。</td></tr>' +
+      '<tr><td>已解决DPI</td><td>DB-部门=AIOT且任务状态=已解决的BUG的DB-DPI值之和。</td></tr>' +
+      '<tr><td>未解决DPI</td><td>DB-部门=AIOT且任务状态≠已解决且≠已关闭的BUG的DB-DPI值之和。</td></tr>' +
+      '<tr><td>解决率</td><td>（已解决+已关闭任务数）/ 总任务数 × 100%。注意：满足"解决超90天=超90天"且"已关闭"且"创建时间距今>90天"的任务已被排除。</td></tr>' +
+      '<tr><td>SLA超时题数</td><td>DB-SLA超时列非空的BUG数量。</td></tr>' +
+      '<tr><td>BLOCK问题数</td><td>任务状态≠已关闭/已解决 且 释放管控=高风险问题的BUG数。</td></tr>' +
+      '<tr><td>BUG数量</td><td>已解决数/全部任务数，不含已被过滤的过期已关闭任务。</td></tr>' +
+      '</tbody></table></div>' +
+    '<div class="hr-table-wrap">' +
+      '<div class="hr-table-header"><div class="hr-table-header-dot"></div><div class="hr-table-header-title">三、健康度判定</div></div>' +
+      '<table class="hr-table"><thead><tr><th style="width:100px">等级</th><th style="width:80px">标签</th><th>判定条件</th></tr></thead><tbody>' +
+      '<tr><td>normal</td><td><span class="health-badge normal">健康</span></td><td>OPEN DPI &lt; 1000</td></tr>' +
+      '<tr><td>danger</td><td><span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:#f53f3f;color:#fff">严重</span></td><td>OPEN DPI &ge; 1000</td></tr>' +
+      '</tbody></table></div>' +
+    '<div class="hr-table-wrap">' +
+      '<div class="hr-table-header"><div class="hr-table-header-dot"></div><div class="hr-table-header-title">四、数据过滤规则</div></div>' +
+      '<table class="hr-table"><thead><tr><th style="width:140px">规则</th><th>说明</th></tr></thead><tbody>' +
+      '<tr><td>过期已关闭过滤</td><td>解决超90天列=超90天，且任务状态=已关闭，且创建时间距今超过90天的任务，不计入任何统计。</td></tr>' +
+      '<tr><td>DPI部门过滤</td><td>DPI相关计算（OPEN DPI/已解决DPI/未解决DPI）仅统计DB-部门=AIOT的任务，非AIOT部门DPI值为0。</td></tr>' +
+      '<tr><td>风险识别范围</td><td>风险分析仅针对AIOT部门人员，侧重SLA超时、BLOCK问题数和OPEN DPI三个维度。</td></tr>' +
+      '<tr><td>趋势计算</td><td>每日OPEN DPI = 当天及之前创建且尚未关闭的AIOT BUG的DPI值累计。趋势图展示近30天。</td></tr>' +
+      '</tbody></table></div>' +
+    '<div class="hr-table-wrap">' +
+      '<div class="hr-table-header"><div class="hr-table-header-dot"></div><div class="hr-table-header-title">五、数据来源</div></div>' +
+      '<table class="hr-table"><thead><tr><th style="width:140px">数据项</th><th>来源文件</th></tr></thead><tbody>' +
+      '<tr><td>项目BUG数据</td><td>钉钉在线表格《缺陷列表》的 data sheet，列含：项目、任务ID、标题、执行者、严重程度、任务状态、解决者、解决时间、创建时间、创建者、重开次数、任务链接、DPI值、考核分值、部门、角色。</td></tr>' +
+      '<tr><td>里程碑</td><td>钉钉在线表格《项目大盘》里程碑 sheet（项目列合并单元格，按项目向下填充）。</td></tr>' +
+      '<tr><td>版本计划</td><td>钉钉在线表格《版本计划》（列：版本、标题、上线时间、内容、链接）。</td></tr>' +
+      '</tbody></table></div>';
+}
+
+function buildRankingColumns() {
+  // 风险最多Top3：按 block*10 + sla*3 + open_di 降序
+  var riskList = PROJECT_NAMES.map(function(p) {
+    var s = PROJECTS_DATA[p].stats;
+    return { name:p, score: s.block * 10 + s.sla * 3 + s.open_di, block:s.block, sla:s.sla, open_di:s.open_di };
+  });
+  riskList.sort(function(a, b) { return b.score - a.score; });
+  var riskTop3 = riskList.slice(0, 3);
+
+  // 问题最多Top3：按未关闭问题数(total - resolved)降序
+  var issueList = PROJECT_NAMES.map(function(p) {
+    var s = PROJECTS_DATA[p].stats;
+    return { name:p, openCount: s.total - s.resolved, total:s.total, resolved:s.resolved, open_di:s.open_di, sla:s.sla, block:s.block };
+  });
+  issueList.sort(function(a, b) { return b.openCount - a.openCount; });
+  var issueTop3 = issueList.slice(0, 3);
+
+  function renderRankItem(item, idx, type) {
+    var numCls = idx === 0 ? 'r1' : idx === 1 ? 'r2' : 'r3';
+    var html = '<div class="ranking-item">';
+    html += '<div class="ranking-num ' + numCls + '">' + (idx + 1) + '</div>';
+    html += '<div class="ranking-info">';
+    html += '<div class="ranking-name">' + item.name + '</div>';
+    html += '<div class="ranking-metrics">';
+    if (type === 'risk') {
+      html += '<span>BLOCK: <b style="color:' + (item.block > 0 ? 'var(--red)' : 'var(--text)') + '">' + item.block + '</b></span>';
+      html += '<span>SLA超时: <b style="color:' + (item.sla > 0 ? 'var(--orange)' : 'var(--text)') + '">' + item.sla + '</b></span>';
+      html += '<span>OPEN DPI: <b style="color:var(--red)">' + item.open_di.toFixed(1) + '</b></span>';
+    } else {
+      html += '<span>未关闭: <b style="color:var(--red)">' + item.openCount + '</b></span>';
+      html += '<span>总计: <b>' + item.total + '</b></span>';
+      html += '<span>OPEN DPI: <b style="color:var(--red)">' + item.open_di.toFixed(1) + '</b></span>';
+    }
+    html += '</div></div>';
+    if (type === 'risk') {
+      html += '<div class="ranking-badge" style="background:#fff2f0;color:var(--red)">风险 ' + item.score.toFixed(1) + '</div>';
+    } else {
+      html += '<div class="ranking-badge" style="background:#fff7e6;color:var(--orange)">' + item.openCount + '个</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  var leftHtml = '';
+  riskTop3.forEach(function(item, idx) { leftHtml += renderRankItem(item, idx, 'risk'); });
+  if (riskTop3.length === 0) leftHtml = '<div style="text-align:center;padding:20px;color:var(--text-secondary)">暂无数据</div>';
+
+  var rightHtml = '';
+  issueTop3.forEach(function(item, idx) { rightHtml += renderRankItem(item, idx, 'issue'); });
+  if (issueTop3.length === 0) rightHtml = '<div style="text-align:center;padding:20px;color:var(--text-secondary)">暂无数据</div>';
+
+  return '<div class="ranking-section">' +
+    '<div class="ranking-col">' +
+      '<div class="ranking-col-title"><div class="ranking-icon" style="background:linear-gradient(135deg,#f53f3f,#ff7d00)">!</div>风险最多项目 Top3</div>' +
+      leftHtml +
+    '</div>' +
+    '<div class="ranking-col">' +
+      '<div class="ranking-col-title"><div class="ranking-icon" style="background:linear-gradient(135deg,#ff7d00,#ffb400)">#</div>问题最多项目 Top3</div>' +
+      rightHtml +
+    '</div>' +
+  '</div>';
+}
+
+function renderOverview() {
+  var tableRows = '';
+  PROJECT_NAMES.forEach(function(p) {
+    var s = PROJECTS_DATA[p].stats;
+    var rr = parseFloat(s.resolve_rate);
+    var rrColor = rr >= 90 ? '#00b42a' : rr >= 75 ? '#ff7d00' : '#f53f3f';
+    var rrBg = rr >= 90 ? '#e8ffea' : rr >= 75 ? '#fff7e6' : '#fff2f0';
+    var pr = s.pending_regression || 0;
+    tableRows += '<tr>' +
+      '<td><span style="font-weight:600">' + p + '</span></td>' +
+      '<td><span style="font-weight:700;font-size:14px;color:var(--red)">' + s.open_di.toFixed(1) + '</span></td>' +
+      '<td><span style="font-weight:600;color:' + (pr > 0 ? 'var(--orange)' : 'var(--text)') + '">' + pr.toFixed(1) + '</span></td>' +
+      '<td><div class="hr-metric"><span class="hr-pill" style="background:' + rrBg + ';color:' + rrColor + '">' + s.resolve_rate + '%</span></div></td>' +
+      '<td><span class="hr-pill" style="background:' + (s.sla > 0 ? '#fff7e6' : '#f2f3f5') + ';color:' + (s.sla > 0 ? '#ff7d00' : 'var(--text)') + '">' + s.sla + '</span></td>' +
+      '<td><span class="hr-pill" style="background:' + (s.block > 0 ? '#fff2f0' : '#f2f3f5') + ';color:' + (s.block > 0 ? '#f53f3f' : 'var(--text)') + '">' + s.block + '</span></td>' +
+      '<td><span style="font-weight:600">' + s.resolved + '/' + s.total + '</span></td>' +
+      '</tr>';
+  });
+  return '<div class="page-header"><div class="page-title">项目总览</div><div class="page-desc">所有项目健康度汇总 · 近30天趋势</div></div>' +
+    '<div class="chart-container"><div class="chart-title">OPEN DPI值趋势</div><div id="trendChart" class="chart-area"></div></div>' +
+    buildRankingColumns() +
+    buildOverviewRisk() +
+    '<div class="hr-table-wrap">' +
+      '<div class="hr-table-header">' +
+        '<div class="hr-table-header-dot"></div>' +
+        '<div class="hr-table-header-title">项目列表</div>' +
+        '<div class="hr-table-header-count">' + PROJECT_NAMES.length + '个项目</div>' +
+      '</div>' +
+      '<table class="hr-table">' +
+      '<thead><tr>' +
+      '<th>项目名</th>' +
+      '<th>OPEN DPI</th>' +
+      '<th>待回归</th>' +
+      '<th>解决率</th>' +
+      '<th>SLA超时题数</th>' +
+      '<th>BLOCK问题数</th>' +
+      '<th>BUG数量</th>' +
+      '</tr></thead><tbody>' + tableRows + '</tbody></table></div>';
+}
+
+function buildOverviewRisk() {
+  // 聚合AIOT部门人员统计（风险识别仅针对AIOT，从PERSON_STATS聚合结果读取）
+  var aggStats = {total:0, resolved:0, open_di:0, sla:0, block:0, resolve_rate:'0.0', health:'normal', pending_regression:0};
+  PROJECT_NAMES.forEach(function(pn) {
+    var s = PROJECTS_DATA[pn].stats;
+    aggStats.total += s.total;
+    aggStats.resolved += s.resolved;
+    aggStats.open_di += s.open_di;
+    aggStats.sla += s.sla;
+    aggStats.block += s.block;
+    aggStats.pending_regression += (s.pending_regression || 0);
+  });
+  aggStats.resolve_rate = aggStats.total > 0 ? (aggStats.resolved / aggStats.total * 100).toFixed(1) : '0.0';
+  var persons = PERSON_STATS.map(function(p) {
+    return {name:p.name, dept:p.dept || 'AIOT', total:p.total_tickets, resolved:p.resolved, reopen:p.reopen, openDI:p.total_open_di, sla:p.total_sla, slaDaysSum:p.sla_days_sum, slaDaysCount:p.sla_days_count, role:p.role || ''};
+  });
+  return buildRiskHtml(persons, aggStats);
+}
+
+function renderProjectDetail(pn) {
+  var s = PROJECTS_DATA[pn].stats;
+
+  // 人员统计（从PERSON_STATS聚合结果读取）
+  var pm = {};
+  PERSON_STATS.forEach(function(p) {
+    var pd = (p.proj_detail || {})[pn];
+    if (!pd) return;
+    pm[p.name] = {name:p.name, total:pd.total, resolved:pd.resolved, reopen:pd.reopen, openDI:pd.open_di, pendingReturnDI:pd.pending_return_di, pendingHandleDI:pd.pending_handle_di, sla:pd.sla, slaDaysSum:pd.sla_days_sum, slaDaysCount:pd.sla_days_count, role:p.role || '', dept:p.dept || ''};
+  });
+  var persons = Object.values(pm);
+  // 风险识别仅用AIOT部门人员
+  var aiotPersons = persons.filter(function(p) { return p.dept === 'AIOT'; });
+
+  // 风险识别
+  var riskHtml = buildRiskHtml(aiotPersons, s);
+
+  // 人力视图 - 按部门分组，统一表格列对齐，按OPEN DPI降序
+  var deptGroups = {};
+  persons.forEach(function(p) {
+    var dept = p.dept || '未知';
+    if (!deptGroups[dept]) deptGroups[dept] = [];
+    deptGroups[dept].push(p);
+  });
+
+  var pc = '';
+  var deptOrder = ['AIOT','整机','其他','未知'];
+  var isFirstDept = true;
+  deptOrder.forEach(function(dept) {
+    if (!deptGroups[dept]) return;
+    var list = deptGroups[dept];
+    // 按OPEN DPI降序排序
+    list.sort(function(a, b) {
+      var diDiff = b.openDI - a.openDI;
+      if (diDiff !== 0) return diDiff;
+      return a.name.localeCompare(b.name);
+    });
+
+    // 部门分隔行
+    if (!isFirstDept) {
+      pc += '<tr class="hr-dept-divider"><td colspan="9"><div class="hr-table-header" style="margin:12px 0 6px"><div class="hr-table-header-dot"></div><div class="hr-table-header-title">' + dept + '</div><div class="hr-table-header-count">' + list.length + '人</div></div></td></tr>';
+    } else {
+      pc += '<tr class="hr-dept-divider"><td colspan="9"><div class="hr-table-header" style="margin:0 0 6px"><div class="hr-table-header-dot"></div><div class="hr-table-header-title">' + dept + '</div><div class="hr-table-header-count">' + list.length + '人</div></div></td></tr>';
+      isFirstDept = false;
+    }
+
+    list.forEach(function(p) {
+      var rate = p.total > 0 ? (p.resolved/p.total*100).toFixed(1) : '0.0';
+      var rr = parseFloat(rate);
+      var rrColor = rr >= 90 ? '#00b42a' : rr >= 75 ? '#ff7d00' : '#f53f3f';
+      var rrBg = rr >= 90 ? '#e8ffea' : rr >= 75 ? '#fff7e6' : '#fff2f0';
+      var slaAvg = p.slaDaysCount > 0 ? (p.slaDaysSum / p.slaDaysCount).toFixed(1) : '-';
+      pc += '<tr>' +
+        '<td>' + p.name + '</td>' +
+        '<td><span style="font-size:12px;color:var(--text-secondary)">' + (p.role || '-') + '</span></td>' +
+        '<td><div class="hr-metric"><span class="hr-pill" style="background:' + rrBg + ';color:' + rrColor + '">' + rate + '%</span></div></td>' +
+        '<td><span style="font-weight:700;font-size:14px;color:var(--red)">' + p.openDI.toFixed(1) + '</span></td>' +
+        '<td><span style="font-weight:600;color:var(--orange)">' + p.pendingReturnDI.toFixed(1) + '</span></td>' +
+        '<td><span style="font-weight:600;color:var(--text)">' + p.pendingHandleDI.toFixed(1) + '</span></td>' +
+        '<td><div class="hr-metric"><span class="hr-pill" style="background:' + (p.sla > 0 ? '#fff7e6' : '#f2f3f5') + ';color:' + (p.sla > 0 ? '#ff7d00' : 'var(--text)') + '">' + p.sla + '</span>' + (p.slaDaysCount > 0 ? '<span class="hr-metric-sub">均' + slaAvg + '天</span>' : '') + '</div></td>' +
+        '<td><span class="hr-pill" style="background:' + (p.reopen > 0 ? '#fff7e6' : '#f2f3f5') + ';color:' + (p.reopen > 0 ? 'var(--orange)' : 'var(--text-secondary)') + '">' + p.reopen + '</span></td>' +
+        '<td><span style="font-weight:600">' + p.resolved + '/' + p.total + '</span></td>' +
+        '</tr>';
+    });
+  });
+
+  var tableHtml = '<div class="hr-table-wrap"><table class="hr-table">' +
+    '<thead><tr>' +
+    '<th>人员</th>' +
+    '<th>角色</th>' +
+    '<th>解决率</th>' +
+    '<th>OPEN DPI</th>' +
+    '<th>待回归DI</th>' +
+    '<th>待处理DI</th>' +
+    '<th>SLA超时</th>' +
+    '<th>重开次数</th>' +
+    '<th>BUG数量</th>' +
+    '</tr></thead><tbody>' + pc + '</tbody></table></div>';
+
+  return '<div class="page-header"><div class="page-title">' + pn + '项目</div></div>' +
+    '<div class="chart-container"><div class="chart-title">OPEN DPI趋势</div><div id="projectTrendChart" class="chart-area"></div></div>' +
+    riskHtml +
+    '<div style="font-size:15px;font-weight:600;margin:18px 0 14px">人力视图</div>' +
+    tableHtml;
+}
+
+function renderHR() {
+  var personDeptMap = {};
+  var personRoleMap = {};
+  var personPendingHandle = {};
+  var personPendingReturn = {};
+  PERSON_STATS.forEach(function(p) {
+    personDeptMap[p.name] = p.dept || "未知";
+    personRoleMap[p.name] = p.role || "Other";
+    var ph = 0, pr = 0;
+    var pd = p.proj_detail || {};
+    Object.keys(pd).forEach(function(pn) {
+      ph += (pd[pn].pending_handle_count || 0);
+      pr += (pd[pn].pending_return_count || 0);
+    });
+    personPendingHandle[p.name] = ph;
+    personPendingReturn[p.name] = pr;
+  });
+
+  var roleOrder = {'AIoT开发': 0, 'AIoT测试': 1, 'Other': 2};
+  function roleSortKey(role) {
+    return roleOrder[role] !== undefined ? roleOrder[role] : 99;
+  }
+
+  // 按部门分组，部门内按OPEN DPI降序排序，同DPI值再按角色和姓名排序
+  var deptGroups = {};
+  PERSON_STATS.forEach(function(p) {
+    var dept = personDeptMap[p.name] || "未知";
+    // 只显示 AIoT 部门的人员
+    if (dept !== 'AIoT' && dept !== 'AIOT') return;
+    if (!deptGroups[dept]) deptGroups[dept] = [];
+    deptGroups[dept].push(p);
+  });
+  var sections = '<div class="chart-title" style="margin-bottom:20px">人力资源</div>';
+  var deptOrder = ['AIOT','AIoT'];
+  var allPersons = [];
+  deptOrder.forEach(function(dept) {
+    if (!deptGroups[dept]) return;
+    var list = deptGroups[dept];
+    // 按OPEN DPI降序排序，同DPI值再按角色和姓名排序
+    list.sort(function(a, b) {
+      var diDiff = (b.total_solved_di + b.total_unsolved_di) - (a.total_solved_di + a.total_unsolved_di);
+      if (diDiff !== 0) return diDiff;
+      var ra = roleSortKey(personRoleMap[a.name]);
+      var rb = roleSortKey(personRoleMap[b.name]);
+      if (ra !== rb) return ra - rb;
+      return a.name.localeCompare(b.name);
+    });
+    var tableRows = '';
+    list.forEach(function(p, idx) {
+      allPersons.push(p);
+      var phCount = personPendingHandle[p.name] || 0;
+      var prCount = personPendingReturn[p.name] || 0;
+      var slaAvg = p.sla_days_count > 0 ? (p.sla_days_sum / p.sla_days_count).toFixed(1) : '-';
+      // SLA超时颜色：0黑色，>0红色
+      var slaTextColor = p.total_sla > 0 ? 'var(--red)' : 'var(--text)';
+      // 重开次数颜色：0黑色，>0红色
+      var reopenTextColor = p.total_reopen > 0 ? 'var(--red)' : 'var(--text)';
+      var role = personRoleMap[p.name] || 'Other';
+      tableRows += '<tr>' +
+        '<td>' + p.name + '</td>' +
+        '<td><span style="font-size:12px;color:var(--text-secondary)">' + role + '</span></td>' +
+        '<td style="font-weight:600">' + phCount + '</td>' +
+        '<td style="font-weight:600;color:' + (prCount > 0 ? 'var(--orange)' : 'var(--text)') + '">' + prCount + '</td>' +
+        '<td style="color:' + (p.total_open_di > 0 ? 'var(--red)' : 'var(--text)') + '">' + p.total_open_di.toFixed(1) + '</td>' +
+        '<td style="color:' + slaTextColor + '">' + p.total_sla + (p.sla_days_count > 0 ? '（均' + slaAvg + '天）' : '') + '</td>' +
+        '<td style="color:' + reopenTextColor + '">' + p.total_reopen + '</td>' +
+        '</tr>';
+    });
+    sections += '<div class="hr-table-wrap">' +
+      '<div class="hr-table-header">' +
+        '<div class="hr-table-header-dot"></div>' +
+        '<div class="hr-table-header-title">' + '全部人员' + '</div>' +
+        '<div class="hr-table-header-count">' + list.length + '人</div>' +
+      '</div>' +
+      '<table class="hr-table">' +
+      '<thead><tr>' +
+      '<th>人员</th>' +
+      '<th>角色</th>' +
+      '<th>待处理</th>' +
+      '<th>待回归</th>' +
+      '<th>OPEN DPI</th>' +
+      '<th>SLA超时</th>' +
+      '<th>重开次数</th>' +
+      '</tr></thead><tbody>' + tableRows + '</tbody></table></div>';
+  });
+
+  // 资源分布图 - 按项目分色的已解决DPI + 未解决DPI（从PERSON_STATS聚合结果读取）
+  var personProjectDi = {};
+  PERSON_STATS.forEach(function(p) {
+    personProjectDi[p.name] = { solved: {}, unsolved: {} };
+    var pd = p.proj_detail || {};
+    PROJECT_NAMES.forEach(function(pn) {
+      if (pd[pn]) {
+        personProjectDi[p.name].solved[pn] = pd[pn].solved_chart_di || 0;
+        personProjectDi[p.name].unsolved[pn] = pd[pn].unsolved_chart_di || 0;
+      }
+    });
+  });
+
+  var maxDi = 0;
+  allPersons.forEach(function(p) {
+    maxDi = Math.max(maxDi, p.total_solved_di + p.total_unsolved_di);
+  });
+  if (maxDi === 0) maxDi = 1;
+
+  // 为每个项目分配颜色
+  var projectColors = {};
+  var colors = ['#165dff', '#00b42a', '#ff7d00', '#f53f3f', '#722ed1', '#faad14', '#13c2c2', '#eb2f96'];
+  PROJECT_NAMES.forEach(function(pn, idx) {
+    projectColors[pn] = colors[idx % colors.length];
+  });
+
+  var chartRows = '';
+  allPersons.forEach(function(p) {
+    var pData = personProjectDi[p.name] || { solved: {}, unsolved: {} };
+    
+    // 计算总宽度
+    var totalDi = p.total_solved_di + p.total_unsolved_di;
+    var segments = '';
+    var currentPos = 0;
+    
+    // 先渲染已解决的DPI（按项目）
+    PROJECT_NAMES.forEach(function(pn) {
+      var solvedDi = pData.solved[pn] || 0;
+      if (solvedDi > 0) {
+        var width = (solvedDi / maxDi * 100).toFixed(1);
+        segments += '<div class="pp-bar-segment" style="width:' + width + '%;background:' + projectColors[pn] + '">' +
+          '<span class="pp-bar-value">' + solvedDi.toFixed(1) + '</span>' +
+        '</div>';
+      }
+    });
+    
+    // 再渲染未解决的DPI（按项目）
+    PROJECT_NAMES.forEach(function(pn) {
+      var unsolvedDi = pData.unsolved[pn] || 0;
+      if (unsolvedDi > 0) {
+        var width = (unsolvedDi / maxDi * 100).toFixed(1);
+        segments += '<div class="pp-bar-segment" style="width:' + width + '%;background:' + projectColors[pn] + ';opacity:0.6">' +
+          '<span class="pp-bar-value">' + unsolvedDi.toFixed(1) + '</span>' +
+        '</div>';
+      }
+    });
+    
+    chartRows += '<div class="pp-row">' +
+      '<div class="pp-name">' + p.name + '</div>' +
+      '<div style="flex:1;display:flex;align-items:center">' +
+        '<div style="flex:1">' +
+          '<div class="pp-bar-line" style="position:relative">' +
+            segments +
+          '</div>' +
+        '</div>' +
+        '<div class="pp-bar-sla">SLA超时:' + p.total_sla + '</div>' +
+      '</div>' +
+    '</div>';
+  });
+
+  // 构建图例
+  var legendItems = '';
+  PROJECT_NAMES.forEach(function(pn) {
+    legendItems += '<span><i style="background:' + projectColors[pn] + '"></i>' + pn + '</span>';
+  });
+
+  // 重开次数独立柱状图 - 统一橙色
+  var reopenPersons = allPersons.filter(function(p) { return p.total_reopen > 0; });
+  reopenPersons.sort(function(a, b) { return b.total_reopen - a.total_reopen; });
+  var maxReopen = reopenPersons.length > 0 ? reopenPersons[0].total_reopen : 1;
+  if (maxReopen === 0) maxReopen = 1;
+
+  var reopenRows = '';
+  reopenPersons.forEach(function(p) {
+    var width = (p.total_reopen / maxReopen * 100).toFixed(1);
+    var showVal = parseFloat(width) > 3;
+    var segment = '<div class="pp-bar-segment" style="width:' + width + '%;background:var(--orange)">' +
+      (showVal ? '<span class="pp-bar-value">' + p.total_reopen + '</span>' : '') +
+    '</div>';
+
+    reopenRows += '<div class="pp-row">' +
+      '<div class="pp-name">' + p.name + '</div>' +
+      '<div style="flex:1;display:flex;align-items:center">' +
+        '<div style="flex:1">' +
+          '<div class="pp-bar-line" style="position:relative">' +
+            segment +
+          '</div>' +
+        '</div>' +
+        '<div class="pp-bar-sla">重开:' + p.total_reopen + '</div>' +
+      '</div>' +
+    '</div>';
+  });
+
+  var reopenChart = '';
+  if (reopenPersons.length > 0) {
+    reopenChart = '<div class="pp-chart"><div class="chart-title">代码质量</div>' +
+      reopenRows + '</div>';
+  }
+
+  return sections +
+    '<div class="pp-chart" id="resourceDistChart"><div class="chart-title">资源分布</div>' +
+    '<div class="pp-legend">' + legendItems + '</div>' +
+    chartRows + '</div>' +
+    reopenChart;
+}
+
+function renderTimelinePage() {
+  return '<div class="page-header"><div class="page-title">项目大盘</div><div class="page-desc">各项目里程碑计划与进度跟踪</div></div>' +
+    '<div class="timeline-section">' +
+      '<div style="display:flex;justify-content:flex-end;margin-bottom:6px"><button class="tl-reset-btn" onclick="resetTimeline()">回到当前</button></div>' +
+      '<div class="tl-timeline-wrap" id="tlWrap">' +
+        '<div class="tl-viewport" id="tlViewport"></div>' +
+      '</div>' +
+    '</div>';
+}
+
+function renderVersionPlan() {
+  var plans = VERSION_PLAN || [];
+  if (plans.length === 0) {
+    return '<div class="page-header"><div class="page-title">版本计划</div><div class="page-desc">各项目版本开发计划</div></div>' +
+      '<div style="text-align:center;padding:60px;color:var(--text-secondary)">暂无版本计划数据</div>';
+  }
+  var rows = '';
+  plans.forEach(function(p) {
+    var overview = p.overview ? p.overview.replace(/\n/g, '<br>') : '';
+    rows += '<tr>' +
+      '<td style="white-space:nowrap;font-weight:600;color:var(--text)">' + (p.date || '-') + '</td>' +
+      '<td style="white-space:nowrap;font-weight:700;color:var(--blue)">' + p.name + '</td>' +
+      '<td style="font-size:13px;color:var(--text-secondary);line-height:1.6;max-width:500px">' + (overview || '<span style="color:var(--text-placeholder)">-</span>') + '</td>' +
+      '<td>' + (p.link ? '<a href="' + p.link + '" target="_blank" style="display:inline-block;padding:3px 10px;background:var(--blue);color:#fff;border-radius:4px;font-size:11px;text-decoration:none;font-weight:600">链接</a>' : '<span style="color:var(--text-placeholder)">-</span>') + '</td>' +
+      '</tr>';
+  });
+  return '<div class="page-header"><div class="page-title">版本计划</div><div class="page-desc">各项目版本开发计划</div></div>' +
+    '<div class="hr-table-wrap"><table class="hr-table">' +
+    '<thead><tr><th>日期</th><th>版本</th><th>内容</th><th>链接</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody></table></div>';
+}
+
+function initCharts() {
+  if (document.getElementById('trendChart')) {
+    var chart = echarts.init(document.getElementById('trendChart'));
+    chart.setOption({
+      tooltip: { trigger:'axis', axisPointer:{type:'cross'} },
+      legend: { data:['OPEN DPI','每日新增','每日解决'], top:0 },
+      xAxis: { type:'category', data:TREND_DATES, axisLabel:{fontSize:10} },
+      yAxis: { type:'value', name:'OPEN DPI' },
+      series: [
+        { name:'OPEN DPI', type:'line', data:CUMULATIVE_DI, smooth:true, lineStyle:{width:2} },
+        { name:'每日新增', type:'bar', data:DAILY_NEW, itemStyle:{color:'#f53f3f'}, barWidth:6 },
+        { name:'每日解决', type:'bar', data:DAILY_RESOLVED, itemStyle:{color:'#00b42a'}, barWidth:6 }
+      ]
+    });
+  }
+  if (document.getElementById('projectTrendChart')) {
+    var pt = PROJECT_TRENDS[selectedProject] || [[],[],[]];
+    var chart = echarts.init(document.getElementById('projectTrendChart'));
+    chart.setOption({
+      tooltip: { trigger:'axis', axisPointer:{type:'cross'} },
+      legend: { data:['OPEN DPI','每日新增','每日解决'], top:0 },
+      xAxis: { type:'category', data:TREND_DATES, axisLabel:{fontSize:10} },
+      yAxis: { type:'value', name:'OPEN DPI' },
+      series: [
+        { name:'OPEN DPI', type:'line', data:pt[0], smooth:true, lineStyle:{width:2} },
+        { name:'每日新增', type:'bar', data:pt[1], itemStyle:{color:'#f53f3f'}, barWidth:6 },
+        { name:'每日解决', type:'bar', data:pt[2], itemStyle:{color:'#00b42a'}, barWidth:6 }
+      ]
+    });
+  }
+  renderTimeline();
+}
+
+var tlViewStart = null; // 当前可视窗口起始日
+var tlDayWidth = 64;    // 每天像素宽度
+var tlDataStart = null; // 数据最早日期
+var tlDataEnd = null;   // 数据最晚日期
+var tlRenderStart = null; // 渲染起始日期
+
+function renderTimeline() {
+  var viewport = document.getElementById('tlViewport');
+  if (!viewport) return;
+
+  var projects = Object.keys(MILESTONES);
+  if (projects.length === 0) { viewport.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)">暂无里程碑数据</div>'; return; }
+
+  // 先显示加载状态，让浏览器有机会绘制
+  viewport.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text-secondary)"><div style="font-size:14px">正在加载时间线...</div></div>';
+
+  requestAnimationFrame(function() {
+  _renderTimelineInner(viewport, projects);
+  });
+}
+
+function _renderTimelineInner(viewport, projects) {
+
+  var allDates = [];
+  projects.forEach(function(pn) {
+    (MILESTONES[pn] || []).forEach(function(m) {
+      if (m.date) { var d = new Date(m.date); if (!isNaN(d.getTime())) allDates.push(d); }
+    });
+  });
+  if (allDates.length === 0) { viewport.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)">暂无有效日期的里程碑数据</div>'; return; }
+
+  var today = new Date(); today.setHours(0,0,0,0);
+
+  // 项目排序：日期越靠近当前越靠前，"已延期"状态优先
+  projects.sort(function(a, b) {
+    var msA = MILESTONES[a] || [];
+    var msB = MILESTONES[b] || [];
+    var hasDelayA = msA.some(function(m) { return m.status === '已延期'; });
+    var hasDelayB = msB.some(function(m) { return m.status === '已延期'; });
+    // 已延期优先
+    if (hasDelayA && !hasDelayB) return -1;
+    if (!hasDelayA && hasDelayB) return 1;
+    // 找最近的有效日期（非"已通过"）
+    function closestDate(msList) {
+      var futureDates = msList.filter(function(m) {
+        return m.date && m.status !== '已通过' && !isNaN(new Date(m.date).getTime());
+      }).map(function(m) { return new Date(m.date); });
+      if (futureDates.length === 0) {
+        // 如果没有未来日期，用所有日期中最近的
+        futureDates = msList.filter(function(m) {
+          return m.date && !isNaN(new Date(m.date).getTime());
+        }).map(function(m) { return new Date(m.date); });
+      }
+      if (futureDates.length === 0) return new Date(8640000000000000);
+      futureDates.sort(function(x, y) {
+        return Math.abs(x - today) - Math.abs(y - today);
+      });
+      return futureDates[0];
+    }
+    var dateA = closestDate(msA);
+    var dateB = closestDate(msB);
+    return Math.abs(dateA - today) - Math.abs(dateB - today);
+  });
+
+  // 数据范围（前后各扩展3天）
+  tlDataStart = new Date(Math.min.apply(null, allDates));
+  tlDataEnd = new Date(Math.max.apply(null, allDates));
+  tlDataStart.setDate(tlDataStart.getDate() - 3);
+  tlDataEnd.setDate(tlDataEnd.getDate() + 3);
+
+  // 默认视图：今天前3天起，共15天
+  if (tlViewStart === null) {
+    tlViewStart = new Date(today);
+    tlViewStart.setDate(tlViewStart.getDate() - 3);
+  }
+
+  var viewDays = 15;
+  var viewWidth = viewDays * tlDayWidth;
+
+  // 渲染范围 = 数据范围 + 前后各扩展5天，最大180天
+  var renderStart = new Date(tlDataStart); renderStart.setDate(renderStart.getDate() - 5);
+  var renderEnd = new Date(tlDataEnd); renderEnd.setDate(renderEnd.getDate() + 5);
+  var defaultViewEnd = new Date(today); defaultViewEnd.setDate(defaultViewEnd.getDate() + 12);
+  if (renderStart > tlViewStart) renderStart = new Date(tlViewStart);
+  if (renderEnd < defaultViewEnd) renderEnd = new Date(defaultViewEnd);
+  // 限制最大渲染范围365天，防止DOM节点过多导致卡顿
+  var maxDays = 365;
+  if (Math.ceil((renderEnd - renderStart) / 86400000) > maxDays) {
+    renderEnd = new Date(renderStart); renderEnd.setDate(renderEnd.getDate() + maxDays);
+  }
+  tlRenderStart = renderStart; // 保存为全局变量
+
+  var totalDays = Math.ceil((renderEnd - renderStart) / 86400000);
+  var innerWidth = totalDays * tlDayWidth;
+  var padLeft = Math.round((tlDataStart - renderStart) / 86400000) * tlDayWidth;
+
+  // 滚动范围限制
+  var earliestPx = 0;
+  var latestPx = innerWidth - viewWidth;
+  // 初始视图居中到今天（与"回到当前"按钮行为一致）
+  var todayOffsetPx = Math.round((today - renderStart) / 86400000) * tlDayWidth;
+  var defaultStartPx = Math.max(earliestPx, Math.min(todayOffsetPx - viewWidth / 2, latestPx));
+
+  function datePx(dateStr) {
+    var d = new Date(dateStr); d.setHours(0,0,0,0);
+    var offset = Math.round((d - renderStart) / 86400000);
+    return offset * tlDayWidth;
+  }
+  function inRenderRange(dateStr) {
+    var d = new Date(dateStr); d.setHours(0,0,0,0);
+    return d >= renderStart && d <= renderEnd;
+  }
+  function statusDotCls(s) {
+    if (s === '已通过') return ' pass';
+    if (s === '已延期') return ' delay';
+    if (s === '处理中') return ' progress';
+    return '';
+  }
+  function statusCardCls(s) {
+    if (s === '已通过') return 'pass';
+    if (s === '已延期') return 'delay';
+    if (s === '处理中') return 'progress';
+    return 'default';
+  }
+  function fmtDate(ds) { return ds.length >= 10 ? ds.slice(5).replace('-', '/') : ds; }
+
+  // === 固定项目名称列 ===
+  var namesHtml = '';
+  namesHtml += '<div class="tl-name-spacer"></div>';
+  projects.forEach(function(pn) {
+    var nodes = (MILESTONES[pn] || []).filter(function(m) { return inRenderRange(m.date); });
+    if (nodes.length === 0) return;
+    // 计算卡片区高度（与时间线体保持一致）
+    var CARD_GAP_N = 160;
+    var ROW_HEIGHT_N = 130;
+    var sortedN = nodes.slice().sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+    var placedN = [];
+    sortedN.forEach(function(m) {
+      var px = datePx(m.date);
+      var row = 0;
+      while (true) {
+        var conflict = false;
+        for (var k = 0; k < placedN.length; k++) {
+          if (placedN[k].row === row && Math.abs(placedN[k].px - px) < CARD_GAP_N) { conflict = true; break; }
+        }
+        if (!conflict) break;
+        row++;
+      }
+      placedN.push({ px: px, row: row });
+    });
+    var maxRowN = 0;
+    for (var k = 0; k < placedN.length; k++) { if (placedN[k].row > maxRowN) maxRowN = placedN[k].row; }
+    var areaHN = (maxRowN + 1) * ROW_HEIGHT_N + 20;
+
+    namesHtml += '<div class="tl-project-row">';
+    namesHtml += '<div class="tl-name-track"><div class="tl-project-name">' + pn + '</div></div>';
+    namesHtml += '<div class="tl-name-card-area" style="min-height:' + areaHN + 'px"></div>';
+    namesHtml += '</div>';
+  });
+
+  // === 可滚动时间线 ===
+  var scrollHtml = '';
+  var headerHtml = '';
+
+  // 日期列头部（独立行，置于 viewport 外部）
+  headerHtml += '<div class="tl-day-cols" style="width:' + innerWidth + 'px">';
+  for (var i = 0; i < totalDays; i++) {
+    var d = new Date(renderStart.getTime() + i * 86400000);
+    var isToday = d.getTime() === today.getTime();
+    var isDataRange = d >= tlDataStart && d <= tlDataEnd;
+    headerHtml += '<div class="tl-day-col' + (isToday ? ' today-col' : '') + '" style="width:' + tlDayWidth + 'px">';
+    headerHtml += '<div class="tl-day-label">' + (d.getMonth()+1) + '/' + d.getDate() + '</div>';
+    headerHtml += '</div>';
+  }
+  headerHtml += '</div>';
+
+  // 项目内容区
+  scrollHtml += '<div class="tl-timeline-body" style="width:' + innerWidth + 'px">';
+  // 今日线
+  var todayPx = datePx(today.toISOString().slice(0,10));
+  scrollHtml += '<div class="tl-today-line" style="left:' + todayPx + 'px"><div class="tl-today-top-label">当前</div><div class="tl-today-label">' + (today.getMonth()+1) + '/' + today.getDate() + '</div></div>';
+
+  projects.forEach(function(pn) {
+    var nodes = (MILESTONES[pn] || []).filter(function(m) { return inRenderRange(m.date); });
+    if (nodes.length === 0) return;
+
+    scrollHtml += '<div class="tl-project-row">';
+    // 轨道 + 圆点
+    scrollHtml += '<div class="tl-track">';
+    nodes.forEach(function(m) {
+      scrollHtml += '<div class="tl-dot' + statusDotCls(m.status) + '" style="left:' + datePx(m.date) + 'px"></div>';
+    });
+    scrollHtml += '</div>';
+
+    // 卡片区 — 碰撞检测
+    var CARD_GAP = 160;
+    var ROW_HEIGHT = 130;
+    var sorted = nodes.slice().sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+    var placed = [];
+    sorted.forEach(function(m) {
+      var px = datePx(m.date);
+      var row = 0;
+      while (true) {
+        var conflict = false;
+        for (var k = 0; k < placed.length; k++) {
+          if (placed[k].row === row && Math.abs(placed[k].px - px) < CARD_GAP) { conflict = true; break; }
+        }
+        if (!conflict) break;
+        row++;
+      }
+      placed.push({ px: px, row: row, node: m });
+    });
+    var maxRow = 0;
+    for (var k = 0; k < placed.length; k++) { if (placed[k].row > maxRow) maxRow = placed[k].row; }
+    var areaH = (maxRow + 1) * ROW_HEIGHT + 20;
+
+    scrollHtml += '<div class="tl-card-area" style="min-height:' + areaH + 'px">';
+    placed.forEach(function(item) {
+      var m = item.node;
+      var topOff = item.row * ROW_HEIGHT;
+      scrollHtml += '<div class="tl-connector" style="left:' + item.px + 'px;top:0;height:' + (topOff + 20) + 'px"></div>';
+      scrollHtml += '<div class="tl-card" style="left:' + item.px + 'px;top:' + (topOff + 20) + 'px">';
+      scrollHtml += '<div class="tl-card-date">' + fmtDate(m.date) + '</div>';
+      scrollHtml += '<div class="tl-card-name">' + m.name + '</div>';
+      if (m.item) scrollHtml += '<div class="tl-card-item">' + m.item + '</div>';
+      if (m.risk) scrollHtml += '<div class="tl-card-risk">风险项：' + m.risk + '</div>';
+      if (m.status) scrollHtml += '<span class="tl-card-status ' + statusCardCls(m.status) + '">' + m.status + '</span>';
+      scrollHtml += '</div>';
+    });
+    scrollHtml += '</div>'; // card-area
+    scrollHtml += '</div>'; // project-row
+  });
+  scrollHtml += '</div>'; // timeline-body
+
+  // 组装：独立日期头行 + viewport（固定名称列 + 可滚动时间线）
+  var wrap = document.getElementById('tlWrap');
+  var headerRow = document.getElementById('tlHeaderRow');
+  if (!headerRow) {
+    headerRow = document.createElement('div');
+    headerRow.id = 'tlHeaderRow';
+    headerRow.className = 'tl-header-row';
+    wrap.insertBefore(headerRow, viewport);
+  }
+  headerRow.innerHTML = headerHtml;
+  viewport.innerHTML = '<div class="tl-names-col" id="tlNamesCol">' + namesHtml + '</div>' +
+    '<div class="tl-scroll-area" id="tlScrollArea">' + scrollHtml + '</div>';
+
+  // 垂直滚动同步
+  var namesCol = document.getElementById('tlNamesCol');
+  var scrollArea = document.getElementById('tlScrollArea');
+  var syncing = false;
+  scrollArea.addEventListener('scroll', function() {
+    if (syncing) return;
+    syncing = true;
+    namesCol.scrollTop = scrollArea.scrollTop;
+    headerRow.scrollLeft = scrollArea.scrollLeft;
+    syncing = false;
+  });
+  namesCol.addEventListener('scroll', function() {
+    if (syncing) return;
+    syncing = true;
+    scrollArea.scrollTop = namesCol.scrollTop;
+    syncing = false;
+  });
+
+  // 滚动到默认位置（数据最早日期处 = tlDataStart）
+  var initScroll = Math.max(earliestPx, Math.min(defaultStartPx, latestPx));
+  scrollArea.scrollLeft = initScroll;
+  headerRow.scrollLeft = initScroll;
+
+  // 鼠标拖拽横向滚动
+  (function() {
+    var isDragging = false;
+    var startX = 0;
+    var startScrollLeft = 0;
+    scrollArea.addEventListener('mousedown', function(e) {
+      // 点击卡片/链接等可交互元素时不启动拖拽
+      if (e.target.closest('a, button, .tl-card')) return;
+      isDragging = true;
+      startX = e.pageX;
+      startScrollLeft = scrollArea.scrollLeft;
+      scrollArea.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!isDragging) return;
+      var dx = e.pageX - startX;
+      scrollArea.scrollLeft = startScrollLeft - dx;
+      headerRow.scrollLeft = scrollArea.scrollLeft;
+    });
+    document.addEventListener('mouseup', function() {
+      if (!isDragging) return;
+      isDragging = false;
+      scrollArea.style.cursor = 'grab';
+    });
+  })();
+}
+
+function resetTimeline() {
+  var today = new Date(); today.setHours(0,0,0,0);
+  tlViewStart = new Date(today);
+  tlViewStart.setDate(tlViewStart.getDate() - 3);
+  renderTimeline();
+  // 滚动到今天的位置
+  setTimeout(function() {
+    var scrollArea = document.getElementById('tlScrollArea');
+    var headerRow = document.getElementById('tlHeaderRow');
+    if (scrollArea && tlRenderStart) {
+      var todayOffset = Math.round((today - tlRenderStart) / 86400000);
+      var todayPx = todayOffset * tlDayWidth;
+      var viewWidth = 15 * tlDayWidth;
+      var targetLeft = todayPx - viewWidth / 2;
+      var maxScroll = scrollArea.scrollWidth - viewWidth;
+      targetLeft = Math.max(0, Math.min(targetLeft, maxScroll));
+      scrollArea.scrollTo({ left: targetLeft, behavior: 'smooth' });
+      if (headerRow) headerRow.scrollLeft = targetLeft;
+    }
+  }, 100);
+}
+
+renderNav();
+renderContent();
+window.addEventListener('resize', function() {
+  document.querySelectorAll('.chart-area').forEach(function(el) {
+    var inst = echarts.getInstanceByDom(el);
+    if (inst) inst.resize();
+  });
+});
+</script>
+</body>
+</html>

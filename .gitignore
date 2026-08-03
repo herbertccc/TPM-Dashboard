@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.~*
+~$*
+tmp/
+*.pyo
+
+# 数据现在从飞书 API 读取，本地 data/ milestone/ 仅用于开发调试
+data/
+milestone/
+
+# 本地 xlsx 文件（企业加密，不上传）
+*.xlsx

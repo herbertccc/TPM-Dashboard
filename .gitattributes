@@ -1,0 +1,3 @@
+# 二进制文件，禁止 Git 做任何转换
+*.png binary
+*.jpg binary
